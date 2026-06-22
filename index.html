@@ -115,6 +115,12 @@
   table.attr{width:100%;border-collapse:collapse;font-size:13px;} table.attr th,table.attr td{padding:8px 6px;text-align:center;border-bottom:1px solid var(--line);} table.attr th{color:var(--muted);font-weight:700;font-size:12px;} table.attr td.name{text-align:left;font-weight:700;}
   .cell-hi{color:var(--green);font-weight:800;} .cell-lo{color:var(--red);font-weight:800;}
   .rt-good{background:#e7f0ff!important;color:#2563eb;font-weight:800;} .rt-bad{background:#fff1f3!important;color:#f43f5e;font-weight:800;}
+  .qsc-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);} .qsc-item:first-child{border-top:none;}
+  .qsc-item .qn{flex:1;font-size:13.5px;}
+  .ox{display:flex;gap:6px;flex:0 0 auto;}
+  .ox button{width:40px;height:36px;border:1.5px solid var(--line);border-radius:9px;background:#fafaff;font-size:17px;font-weight:800;color:#aab;}
+  .ox button.o.on{background:var(--green-bg);border-color:var(--green);color:var(--green);}
+  .ox button.x.on{background:var(--red-bg);border-color:var(--red);color:var(--red);}
   .print-only{display:none;}
   @media print{ .no-print{display:none!important;} header,nav.bottom{display:none!important;} body{background:#fff!important;padding:0!important;} main{max-width:100%!important;} .card{box-shadow:none!important;border:1px solid #ddd!important;break-inside:avoid;} .print-only{display:block!important;} *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;} }
   #loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:700;}
@@ -206,6 +212,28 @@ const NATIONAL_TOPICS=[
   {t:"テイクアウト・デリバリー",d:"中食需要は定着。丼・いなり・天ぷら弁当など持ち帰り商品や、雨の日のデリバリーで機会ロスを補う。配達手数料(約30%)を見込んだ価格設計を。"},
   {t:"上場外食大手の打ち手",d:"大手は価格改定＋価値訴求、モバイルオーダー/セルフレジ、クーポンアプリ・サブスク、期間限定・トッピング訴求を推進。取り入れられる打ち手は模倣する。"}
 ];
+let QSC=[], qscState={}, qscViewStore=null;
+const QSC_ITEMS=[
+ {cat:"Q（品質）",items:[
+   {id:"q1",t:"麺の茹で時間・かたさは基準どおりか"},
+   {id:"q2",t:"だしの温度・濃度は基準どおりか"},
+   {id:"q3",t:"トッピングの鮮度・盛り付けは基準どおりか"},
+   {id:"q4",t:"提供温度は適切か"},
+   {id:"q5",t:"廃棄・ロス管理ができているか"}]},
+ {cat:"S（サービス）",items:[
+   {id:"s1",t:"笑顔・あいさつ・声かけができているか"},
+   {id:"s2",t:"提供スピードは基準内か"},
+   {id:"s3",t:"注文・会計の正確さは保たれているか"},
+   {id:"s4",t:"席案内・気配りは適切か"},
+   {id:"s5",t:"クレーム対応の手順を守れているか"}]},
+ {cat:"C（清潔）",items:[
+   {id:"c1",t:"厨房の清掃・整理整頓ができているか"},
+   {id:"c2",t:"フロア・客席・卓上が清潔か"},
+   {id:"c3",t:"トイレの清掃・備品補充ができているか"},
+   {id:"c4",t:"制服・身だしなみは清潔か"},
+   {id:"c5",t:"手洗い・衛生管理を徹底しているか"}]}
+];
+function qscAllItems(){return QSC_ITEMS.reduce((a,g)=>a.concat(g.items),[]);}
 const SCRIPTS=[
  {title:"行列のできる時間帯の店内",points:["開店前の仕込み","のれんを出す瞬間","席が埋まる早回し"],thumb:"行列必至の打ちたて"},
  {title:"打ちたて麺の湯気アップ",points:["製麺機から出る麺","茹で上げの湯気","しめる水しぶき"],thumb:"打ちたて、ここにしかない"},
@@ -304,6 +332,7 @@ async function loadData(){
   const {data:bg}=await sb.from("budgets").select("*");BUDGETS={};(bg||[]).forEach(r=>BUDGETS[r.store_id]=r.b);
   const {data:rep}=await sb.from("reports").select("*").order("month",{ascending:false});REPORTS=rep||[];
   const {data:ln}=await sb.from("local_notes").select("*");LOCALNOTES={};(ln||[]).forEach(r=>LOCALNOTES[r.store_id]=r.note);
+  const {data:qsc}=await sb.from("qsc_checks").select("*").order("date");QSC=qsc||[];
 }
 
 /* ===== アプリ枠 ===== */
@@ -321,11 +350,12 @@ function renderApp(){
       <button data-m="insta" onclick="go('insta')"><span class="ni">🎬</span>インスタ</button>
       <button data-m="survey" onclick="go('survey')"><span class="ni">📝</span>アンケート</button>
       <button data-m="report" onclick="go('report')"><span class="ni">📈</span>レポート</button>
+      <button data-m="qsc" onclick="go('qsc')"><span class="ni">📋</span>QSC</button>
     </nav>`;
   if(ME.role==="hq") $("vpick").onclick=openStorePicker;
   render();
 }
-function go(m){module=m;repViewId=null;render();}
+function go(m){module=m;repViewId=null;qscViewStore=null;qscState={};render();}
 function render(){
   document.querySelectorAll("#nav button").forEach(b=>b.className=b.dataset.m===module?"on":"");
   $("hSub").textContent = ME.role==="hq"?(view.mode==="hq"?"本部モード":esc(storeName(view.storeId))+"（本部）"):esc(storeName(ME.store_id))+"・店長";
@@ -336,6 +366,7 @@ function render(){
   else if(module==="insta")m.innerHTML=renderInsta();
   else if(module==="survey")m.innerHTML=renderSurvey();
   else if(module==="report")m.innerHTML=renderReport();
+  else if(module==="qsc")m.innerHTML=renderQSC();
   else m.innerHTML=`<div class="card"><div class="empty">準備中</div></div>`;
 }
 
@@ -354,7 +385,7 @@ function renderStoreList(q){
     return `<button class="store-item ${on?'on':''}" onclick="pickView('${it.mode}',${it.id||null})"><span>${esc(it.label)}</span>${on?'<span>✓</span>':''}</button>`;
   }).join("");
 }
-function pickView(mode,id){view={mode,storeId:mode==="hq"?view.storeId:id};$("modal").classList.remove("on");render();}
+function pickView(mode,id){view={mode,storeId:mode==="hq"?view.storeId:id};qscViewStore=null;qscState={};repViewId=null;$("modal").classList.remove("on");render();}
 
 /* ===== ホーム ===== */
 function renderHome(){
@@ -860,6 +891,64 @@ async function saveBudget(sid){
   await sb.from("budgets").upsert({store_id:sid,b},{onConflict:"store_id"});
   await sb.from("local_notes").upsert({store_id:sid,note},{onConflict:"store_id"});
   closeModal();await loadData();render();
+}
+
+/* ===== QSCチェック ===== */
+function renderQSC(){ return view.mode==="hq"?renderQSCHQ():renderQSCStore(view.storeId); }
+function lineChart(data){
+  if(!data.length)return `<div class="empty">まだデータがありません</div>`;
+  const W=320,H=150,L=28,R=10,T=12,B=24,n=data.length;
+  const x=i=> n>1 ? L+i*(W-L-R)/(n-1) : (L+(W-R))/2;
+  const y=v=> T+(100-v)/100*(H-T-B);
+  let g=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">`;
+  [0,50,100].forEach(v=>{g+=`<line x1="${L}" y1="${y(v).toFixed(1)}" x2="${W-R}" y2="${y(v).toFixed(1)}" stroke="#eef0fb"/><text x="2" y="${(y(v)+3).toFixed(1)}" font-size="9" fill="#8b90b5">${v}</text>`;});
+  g+=`<polyline points="${data.map((d,i)=>x(i).toFixed(1)+","+y(d.value).toFixed(1)).join(" ")}" fill="none" stroke="#6d5efc" stroke-width="2.5" stroke-linejoin="round"/>`;
+  data.forEach((d,i)=>{g+=`<circle cx="${x(i).toFixed(1)}" cy="${y(d.value).toFixed(1)}" r="3.2" fill="#6d5efc"/><text x="${x(i).toFixed(1)}" y="${(y(d.value)-7).toFixed(1)}" font-size="9" fill="#4338ca" text-anchor="middle">${d.value}</text>`;});
+  data.forEach((d,i)=>{g+=`<text x="${x(i).toFixed(1)}" y="${H-6}" font-size="8.5" fill="#8b90b5" text-anchor="middle">${(d.label||"").slice(5).replace("-","/")}</text>`;});
+  g+=`</svg>`;return g;
+}
+function setQSC(id,val){ qscState[id]=(qscState[id]===val)?undefined:val; render(); }
+function renderQSCStore(sid){
+  const items=qscAllItems(),oCount=items.filter(it=>qscState[it.id]===true).length,score=Math.round(oCount/items.length*100);
+  let h=`<div class="card"><div class="ach-top"><span class="ach-label">QSCチェック（${esc(storeName(sid))}）</span><span class="ach-count">${oCount} / ${items.length} ○</span></div>
+    <div class="ach-pct">${score}<span>%</span></div><div class="bar"><i style="width:${score}%"></i></div></div>`;
+  QSC_ITEMS.forEach(g=>{h+=`<div class="grp-title">${esc(g.cat)}</div><div class="card">`;
+    g.items.forEach(it=>{const v=qscState[it.id];h+=`<div class="qsc-item"><div class="qn">${esc(it.t)}</div><div class="ox"><button class="o ${v===true?'on':''}" onclick="setQSC('${it.id}',true)">○</button><button class="x ${v===false?'on':''}" onclick="setQSC('${it.id}',false)">✕</button></div></div>`;});
+    h+=`</div>`;});
+  h+=`<button class="btn-grad" onclick="submitQSC(${sid})">本部へ送信する</button>`;
+  const hist=QSC.filter(c=>c.store_id===sid).sort((a,b)=>a.date.localeCompare(b.date));
+  h+=`<div class="sec-h"><span class="dot"></span>これまでの推移</div><div class="card">${lineChart(hist.map(c=>({label:c.date,value:c.score})))}`;
+  if(hist.length)h+=`<div style="margin-top:8px">`+hist.slice().reverse().map(c=>`<div class="t-meta">・${c.date.slice(5)}　<b>${c.score}%</b></div>`).join("")+`</div>`;
+  h+=`</div>`;return h;
+}
+async function submitQSC(sid){
+  const items=qscAllItems(),un=items.filter(it=>qscState[it.id]===undefined).length;
+  if(un>0){if(!confirm(un+"件が未チェックです。未チェックは✕として送信します。よろしいですか？"))return;}
+  const results={};items.forEach(it=>results[it.id]=qscState[it.id]===true);
+  const score=Math.round(items.filter(it=>qscState[it.id]===true).length/items.length*100);
+  const {error}=await sb.from("qsc_checks").insert([{store_id:sid,date:todayStr(),results,score}]);
+  if(error){alert("送信に失敗："+error.message);return;}
+  qscState={};await loadData();render();alert("本部へ送信しました。今回のスコア："+score+"%");
+}
+function setQscView(sid){qscViewStore=sid;render();}
+function backQsc(){qscViewStore=null;render();}
+function renderQSCHQ(){
+  if(qscViewStore!=null)return renderQSCTrend(qscViewStore);
+  let h=`<div class="card"><div class="ach-label">QSCダッシュボード｜各店の最新スコア</div>`;
+  STORES.forEach(s=>{const hist=QSC.filter(c=>c.store_id===s.id).sort((a,b)=>b.date.localeCompare(a.date));const latest=hist[0],sc=latest?latest.score:null;
+    h+=`<div class="store-row"><div class="sr-name">${esc(s.name)}</div><div class="sr-bar"><div class="bar"><i style="width:${sc||0}%"></i></div><div class="t-meta" style="margin-top:4px">${latest?("最新 "+latest.date.slice(5)):"未提出"}</div></div><div class="sr-pct">${sc==null?'—':sc+'%'}</div></div>`;});
+  h+=`</div><div class="sec-h"><span class="dot"></span>店舗ごとの推移を見る</div><div class="card">`;
+  STORES.forEach(s=>{h+=`<div class="task"><div class="t-body"><div class="t-name">${esc(s.name)}</div><div class="t-meta">${QSC.filter(c=>c.store_id===s.id).length}回のチェック</div></div><button class="t-edit" onclick="setQscView(${s.id})">推移 ›</button></div>`;});
+  h+=`</div>`;return h;
+}
+function renderQSCTrend(sid){
+  const hist=QSC.filter(c=>c.store_id===sid).sort((a,b)=>a.date.localeCompare(b.date));
+  const latest=hist.length?hist[hist.length-1].score:null;
+  let h=`<button class="btn-line" style="margin:0 0 12px" onclick="backQsc()">← 戻る</button>`;
+  h+=`<div class="card"><div class="ach-top"><span class="ach-label">${esc(storeName(sid))}のQSC推移</span>${latest!=null?`<span class="ach-count">最新 ${latest}%</span>`:""}</div>${lineChart(hist.map(c=>({label:c.date,value:c.score})))}</div>`;
+  h+=`<div class="sec-h"><span class="dot"></span>履歴（${hist.length}回）</div><div class="card">`;
+  h+= hist.length? hist.slice().reverse().map(c=>`<div class="task"><div class="t-body"><div class="t-name">${c.date}</div></div><div class="sr-pct">${c.score}%</div></div>`).join("") : `<div class="empty">まだありません</div>`;
+  h+=`</div>`;return h;
 }
 
 $("modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal();});
