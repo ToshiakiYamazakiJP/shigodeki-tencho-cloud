@@ -1,0 +1,1580 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>店長アプリ（試作）</title>
+<style>
+  :root{
+    --navy:#4338ca; --navy-d:#3730a3;
+    --teal:#0ea5e9; --gold:#f59e0b;
+    --bg:#eef2ff; --card:#ffffff;
+    --ink:#2b2e4a; --muted:#8b90b5; --line:#ebecf8;
+    --red:#f43f5e; --red-bg:#fff1f3;
+    --yellow:#f59e0b; --yellow-bg:#fff8eb;
+    --green:#10b981; --green-bg:#e7fbf2;
+    --grad:linear-gradient(135deg,#6d5efc 0%,#8b5cf6 45%,#22d3ee 100%);
+    --grad-soft:linear-gradient(135deg,#a78bfa,#38bdf8);
+    --appw:430px;          /* スマホ幅。これより広い画面では中央に寄せる */
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;
+    background:linear-gradient(180deg,#f3f0ff 0%,#eaf4ff 100%);background-attachment:fixed;
+    color:var(--ink);font-size:16px;line-height:1.5;padding-bottom:96px;
+  }
+  /* ===== ヘッダー ===== */
+  header{background:var(--grad);color:#fff;padding:14px 14px 12px;position:sticky;top:0;z-index:20;
+         box-shadow:0 6px 18px rgba(109,94,252,.30);overflow:hidden;}
+  .hdr-photo{position:absolute;inset:0;z-index:0;background-size:cover;background-position:center;
+    opacity:.30;pointer-events:none;
+    -webkit-mask-image:linear-gradient(to top,#000 0,#000 18%,transparent 95%);
+            mask-image:linear-gradient(to top,#000 0,#000 18%,transparent 95%);}
+  .hdr-photo svg{width:100%;height:100%;display:block;}
+  .hdr-bg{position:absolute;inset:0;z-index:1;opacity:.16;pointer-events:none;
+    -webkit-mask-image:linear-gradient(to top,#000 0,#000 22%,transparent 92%);
+            mask-image:linear-gradient(to top,#000 0,#000 22%,transparent 92%);}
+  .hdr-bg svg{width:100%;height:100%;display:block;}
+  header .wrap{position:relative;z-index:2;max-width:var(--appw);margin:0 auto;}
+  .hdr-main{display:flex;align-items:center;gap:12px;}
+  .hdr-textcol{flex:1;min-width:0;}
+  .h-title{font-size:15px;font-weight:800;letter-spacing:.01em;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .h-title small{display:block;font-size:10px;font-weight:400;color:#e7e0ff;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .hdr-logo{flex:0 0 auto;display:flex;align-items:center;justify-content:center;}
+  .hdr-logo svg{width:100%;height:100%;display:block;}
+  .hdr-logo img.fixed-mark{width:100%;height:100%;object-fit:contain;display:block;}
+  .markprev svg{height:56px;width:auto;display:block;margin:0 auto;}
+  .hdr-mark{flex:0 0 auto;display:flex;align-items:center;justify-content:center;cursor:pointer;
+    background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 3px 12px rgba(0,0,0,.18);}
+  .hdr-mark img{width:100%;height:100%;object-fit:contain;display:block;background:#fff;}
+  .hdr-mark .ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;text-align:center;
+    color:#aab;font-size:11px;font-weight:700;}
+  .view-picker{margin-top:10px;display:inline-flex;align-items:center;gap:8px;border:none;border-radius:10px;
+    background:rgba(255,255,255,.92);color:var(--navy);font-size:15px;font-weight:800;padding:9px 14px;box-shadow:0 2px 8px rgba(0,0,0,.12);max-width:100%;}
+  .view-picker::after{content:"▼";font-size:10px;opacity:.6;}
+  .view-picker span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .store-item{display:flex;align-items:center;justify-content:space-between;width:100%;text-align:left;border:1.5px solid var(--line);
+    background:#fff;border-radius:12px;padding:13px 14px;font-size:15px;font-weight:700;color:var(--ink);margin-bottom:8px;}
+  .store-item.on{border-color:transparent;background:var(--grad);color:#fff;}
+  .store-item .badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:#eef0fb;color:#5a6878;}
+  .store-item.on .badge{background:rgba(255,255,255,.25);color:#fff;}
+  /* ===== 中身 ===== */
+  main{padding:16px 14px 0;max-width:var(--appw);margin:0 auto;}
+  .card{background:var(--card);border-radius:20px;padding:16px;margin-bottom:14px;
+        box-shadow:0 8px 24px rgba(80,70,200,.08);border:1px solid var(--line);}
+  .sec-h{font-size:13px;font-weight:800;color:var(--navy);margin:18px 4px 8px;display:flex;align-items:center;gap:6px;}
+  .sec-h .dot{width:8px;height:8px;border-radius:50%;background:var(--grad);}
+  .muted{color:var(--muted);}
+  .empty{text-align:center;color:var(--muted);padding:26px 10px;font-size:14px;}
+  /* ===== ホーム ===== */
+  .hello{font-size:18px;font-weight:800;color:var(--navy);}
+  .hello small{display:block;font-size:12px;color:var(--muted);font-weight:600;margin-top:2px;}
+  .notice{display:flex;gap:10px;padding:11px 4px;border-top:1px solid var(--line);font-size:14px;}
+  .notice:first-child{border-top:none;}
+  .notice .nd{flex:0 0 auto;font-size:11px;color:var(--muted);font-weight:700;min-width:42px;}
+  .big-btns{display:grid;grid-template-columns:1fr;gap:12px;margin-top:6px;}
+  .big-btn{display:flex;align-items:center;gap:14px;border:none;border-radius:18px;padding:18px 18px;
+    background:var(--card);box-shadow:0 8px 24px rgba(80,70,200,.10);border:1px solid var(--line);text-align:left;}
+  .big-btn .ic{flex:0 0 auto;width:50px;height:50px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+    font-size:24px;background:var(--grad);color:#fff;box-shadow:0 4px 12px rgba(109,94,252,.30);}
+  .big-btn .ic svg{width:27px;height:27px;display:block;}
+  .big-btn > span{display:flex;flex-direction:column;min-width:0;}
+  .big-btn .bt{display:block;font-size:17px;font-weight:800;color:var(--ink);}
+  .big-btn .bs{display:block;font-size:12px;color:var(--muted);margin-top:2px;line-height:1.4;}
+  .big-btn .ar{margin-left:auto;color:var(--muted);font-size:20px;}
+  /* ===== 達成度バー ===== */
+  .ach-top{display:flex;align-items:baseline;justify-content:space-between;}
+  .ach-label{font-size:13px;color:var(--muted);font-weight:700;}
+  .ach-count{font-size:15px;color:var(--ink);font-weight:700;}
+  .ach-pct{font-size:48px;font-weight:800;line-height:1;margin:6px 0 4px;
+    background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .ach-pct span{font-size:20px;}
+  .bar{height:16px;background:#eef0fb;border-radius:10px;overflow:hidden;margin-top:6px;}
+  .bar > i{display:block;height:100%;background:var(--grad);border-radius:10px;transition:width .4s;
+    box-shadow:0 2px 8px rgba(109,94,252,.35);}
+  /* ===== タスク行 ===== */
+  .grp-title{font-size:12px;font-weight:800;color:var(--teal);margin:14px 4px 6px;}
+  .task{display:flex;align-items:flex-start;gap:12px;padding:12px 4px;border-top:1px solid var(--line);}
+  .task:first-child{border-top:none;}
+  .check{flex:0 0 auto;width:30px;height:30px;border-radius:50%;border:2px solid #cfd6dd;background:#fff;
+    font-size:16px;color:transparent;display:flex;align-items:center;justify-content:center;}
+  .check.done{background:linear-gradient(135deg,#10b981,#22d3ee);border-color:transparent;color:#fff;box-shadow:0 2px 8px rgba(16,185,129,.35);}
+  .t-body{flex:1;min-width:0;}
+  .t-name{font-size:15px;font-weight:700;}
+  .task.done .t-name{color:var(--muted);}
+  .t-meta{font-size:12px;color:var(--muted);margin-top:2px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+  .pill{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:#eef1f4;color:#5a6878;}
+  .pill.due-over{background:var(--red-bg);color:var(--red);}
+  .pill.due-soon{background:var(--yellow-bg);color:var(--yellow);}
+  .pill.due-ok{background:var(--green-bg);color:var(--green);}
+  .pill.done-tag{background:var(--green-bg);color:var(--green);}
+  .pill.scope-all{background:#ede9fe;color:#7c3aed;}
+  .pill.scope-single{background:#e0f2fe;color:#0284c7;}
+  .pill.st-draft{background:#eef1f4;color:#5a6878;}
+  .pill.st-pending{background:var(--yellow-bg);color:var(--yellow);}
+  .pill.st-scheduled{background:#ede9fe;color:#7c3aed;}
+  .pill.st-posted{background:var(--green-bg);color:var(--green);}
+  .pill.st-rejected{background:var(--red-bg);color:var(--red);}
+  .t-edit{flex:0 0 auto;color:var(--muted);font-size:20px;padding:2px 6px;background:none;border:none;}
+  /* ===== 本部ダッシュ ===== */
+  .store-row{display:flex;align-items:center;gap:12px;padding:14px 4px;border-top:1px solid var(--line);}
+  .store-row:first-child{border-top:none;}
+  .sr-name{flex:0 0 64px;font-weight:800;font-size:15px;}
+  .sr-bar{flex:1;} .sr-bar .bar{height:14px;}
+  .sr-pct{flex:0 0 54px;text-align:right;font-weight:800;font-size:17px;}
+  .rank-tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;}
+  .rank-top{background:var(--green-bg);color:var(--green);}
+  .rank-low{background:var(--red-bg);color:var(--red);}
+  .lead{font-size:13px;color:var(--muted);margin:2px 4px 14px;}
+  /* ===== ボタン ===== */
+  .btn-grad{display:block;width:100%;background:var(--grad);color:#fff;border:none;border-radius:14px;
+    padding:15px;font-size:16px;font-weight:800;box-shadow:0 6px 16px rgba(109,94,252,.35);margin-top:4px;}
+  .btn-line{display:block;width:100%;background:#fff;color:var(--navy);border:1.5px solid var(--line);
+    border-radius:14px;padding:13px;font-size:15px;font-weight:700;margin-top:10px;}
+  .btn-del{width:100%;margin-top:14px;background:#fff;color:var(--red);border:1.5px solid var(--red-bg);
+    border-radius:12px;padding:13px;font-size:14px;font-weight:700;}
+  /* ===== インスタ ===== */
+  .script-card{background:var(--grad);color:#fff;border-radius:20px;padding:18px;margin-bottom:14px;
+    box-shadow:0 10px 26px rgba(109,94,252,.35);}
+  .script-card .lab{font-size:12px;font-weight:700;opacity:.9;display:flex;align-items:center;gap:6px;}
+  .script-card h3{font-size:20px;margin:8px 0 10px;font-weight:800;}
+  .script-card ul{margin:0;padding-left:18px;font-size:14px;line-height:1.8;}
+  .script-card .thumb-idea{margin-top:12px;background:rgba(255,255,255,.18);border-radius:12px;padding:10px 12px;font-size:13px;font-weight:700;}
+  .ai-btn{background:rgba(255,255,255,.22);color:#fff;border:1px solid rgba(255,255,255,.45);
+    border-radius:20px;padding:8px 14px;font-size:13px;font-weight:700;margin-top:14px;}
+  .vidbox{border:2px dashed var(--line);border-radius:14px;padding:24px;text-align:center;color:var(--muted);font-size:14px;background:#fafaff;}
+  .vidbox.has{border-style:solid;border-color:#c4b5fd;color:var(--navy);background:#f5f3ff;font-weight:700;}
+  .post-thumb{display:flex;gap:12px;align-items:center;}
+  .post-thumb .ph{flex:0 0 auto;width:56px;height:56px;border-radius:12px;background:var(--grad);
+    display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;}
+  .toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 4px;border-top:1px solid var(--line);}
+  .sw{position:relative;width:50px;height:28px;border-radius:20px;background:#d7dbef;border:none;flex:0 0 auto;transition:.2s;}
+  .sw.on{background:linear-gradient(135deg,#8b5cf6,#22d3ee);}
+  .sw i{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2);}
+  .sw.on i{left:25px;}
+  /* ===== アンケート ===== */
+  .q-block{padding:14px 0;border-top:1px solid var(--line);}
+  .q-block:first-child{border-top:none;}
+  .q-text{font-size:14px;font-weight:600;margin-bottom:8px;}
+  .q-opts{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+  .q-opts button{padding:10px 6px;border:1.5px solid var(--line);border-radius:10px;background:#fafaff;
+    font-size:12.5px;font-weight:700;color:#5a6878;line-height:1.3;}
+  .q-opts button.on{background:var(--grad);color:#fff;border-color:transparent;}
+  .sub-score{display:flex;align-items:center;gap:10px;padding:10px 4px;border-top:1px solid var(--line);}
+  .sub-score:first-child{border-top:none;}
+  .ss-name{flex:1;font-size:13.5px;font-weight:700;}
+  .ss-bar{flex:0 0 110px;} .ss-bar .bar{height:12px;}
+  .ss-pct{flex:0 0 64px;text-align:right;font-weight:800;font-size:15px;}
+  .ss-pct.hi{color:var(--green);} .ss-pct.lo{color:var(--red);}
+  .grandcard{text-align:center;}
+  .grandcard .gp{font-size:52px;font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1;}
+  .ai-summary{background:#f5f3ff;border:1px solid #e4ddff;border-radius:14px;padding:14px;font-size:14px;line-height:1.7;}
+  .ai-summary .lab{font-size:12px;font-weight:800;color:#7c3aed;display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+  .freetext{font-size:13px;color:var(--ink);padding:9px 0;border-top:1px dashed var(--line);}
+  .freetext:first-child{border-top:none;}
+  table.attr{width:100%;border-collapse:collapse;font-size:13px;}
+  table.attr th,table.attr td{padding:8px 6px;text-align:center;border-bottom:1px solid var(--line);}
+  table.attr th{color:var(--muted);font-weight:700;font-size:12px;}
+  table.attr td.name{text-align:left;font-weight:700;}
+  .cell-hi{color:var(--green);font-weight:800;} .cell-lo{color:var(--red);font-weight:800;}
+  .rt-good{background:#e7f0ff!important;color:#2563eb;font-weight:800;}
+  .rt-bad{background:#fff1f3!important;color:#f43f5e;font-weight:800;}
+  /* ===== モーダル ===== */
+  .modal-bg{position:fixed;inset:0;background:rgba(45,46,74,.5);z-index:40;display:none;align-items:flex-end;}
+  .modal-bg.on{display:flex;}
+  .modal{background:#fff;width:100%;max-width:560px;margin:0 auto;border-radius:22px 22px 0 0;
+    padding:18px 16px 26px;max-height:94vh;overflow:auto;animation:up .25s ease;}
+  @keyframes up{from{transform:translateY(40px);opacity:.5;}to{transform:none;opacity:1;}}
+  .modal h2{font-size:18px;margin:2px 0 10px;color:var(--navy);}
+  label.fld{display:block;font-size:13px;font-weight:700;color:var(--ink);margin:14px 2px 6px;}
+  input[type=text],input[type=datetime-local],select,input[type=date],textarea{
+    width:100%;padding:13px 12px;border:1.5px solid var(--line);border-radius:12px;font-size:16px;background:#fafaf7;color:var(--ink);}
+  textarea{min-height:80px;resize:vertical;font-family:inherit;}
+  .seg{display:flex;flex-wrap:wrap;gap:8px;}
+  .seg button{flex:1 1 auto;min-width:78px;padding:11px 6px;border:1.5px solid var(--line);border-radius:12px;background:#fafaf7;font-size:14px;font-weight:700;color:#5a6878;}
+  .seg button.on{background:var(--grad);color:#fff;border-color:transparent;box-shadow:0 4px 12px rgba(109,94,252,.30);}
+  .sub{margin-top:12px;}
+  .m-actions{display:flex;gap:10px;margin-top:22px;}
+  .btn-main{flex:1;background:var(--grad);color:#fff;border:none;border-radius:12px;padding:15px;font-size:16px;font-weight:800;box-shadow:0 6px 16px rgba(109,94,252,.35);}
+  .btn-ghost{flex:0 0 auto;background:#fff;color:var(--muted);border:1.5px solid var(--line);border-radius:12px;padding:15px 18px;font-size:15px;font-weight:700;}
+  .hint{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5;}
+  .scope-note{font-size:13px;font-weight:700;color:var(--navy);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:14px 0 0;}
+  .foot-note{font-size:11px;color:var(--muted);text-align:center;padding:6px 20px 10px;line-height:1.6;}
+  /* ===== 下のメニュー ===== */
+  nav.bottom{position:fixed;left:0;right:0;bottom:0;z-index:30;background:#fff;display:flex;
+    box-shadow:0 -2px 16px rgba(80,70,200,.12);border-top:1px solid var(--line);max-width:var(--appw);margin:0 auto;}
+  nav.bottom button{flex:1;border:none;background:none;padding:9px 0 11px;color:var(--muted);font-size:11px;font-weight:700;}
+  nav.bottom button .ni{display:block;font-size:21px;margin-bottom:1px;filter:grayscale(1);opacity:.55;}
+  nav.bottom button.on{color:var(--navy);}
+  nav.bottom button.on .ni{filter:none;opacity:1;}
+  /* ===== 印刷／PDF用 ===== */
+  .print-only{display:none;}
+  @media print{
+    .no-print{display:none!important;}
+    header,nav.bottom{display:none!important;}
+    body{background:#fff!important;padding:0!important;}
+    main{max-width:100%!important;padding:0 6mm!important;}
+    .card{box-shadow:none!important;border:1px solid #d9d9e3!important;break-inside:avoid;}
+    .sec-h{break-after:avoid;}
+    .print-only{display:block!important;}
+    .print-head{display:flex!important;align-items:center;gap:12px;border-bottom:2px solid #6d5efc;padding-bottom:8px;margin:0 0 12px;}
+    .print-head img{max-height:50px;max-width:160px;object-fit:contain;}
+    *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hdr-photo" id="hdrPhoto" aria-hidden="true"></div>
+  <div class="hdr-bg" aria-hidden="true">
+    <svg viewBox="0 0 430 120" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg"><g fill="#ffffff">
+      <g transform="translate(44,8)"><path d="M-40,120 C-40,90 -24,78 0,78 C24,78 40,90 40,120 Z"/><circle cx="0" cy="60" r="17"/></g>
+      <g transform="translate(112,3)"><path d="M-36,120 C-36,92 -22,80 0,80 C22,80 36,92 36,120 Z"/><path d="M-19,60 C-22,40 22,40 19,60 C20,74 16,96 11,108 L6,108 C10,96 12,80 11,62 L-11,62 C-12,80 -10,96 -6,108 L-11,108 C-16,96 -20,74 -19,60 Z"/><circle cx="0" cy="58" r="14"/></g>
+      <g transform="translate(182,-5)"><path d="M-43,120 C-43,87 -26,74 0,74 C26,74 43,87 43,120 Z"/><circle cx="0" cy="55" r="19"/></g>
+      <g transform="translate(252,1)"><path d="M-36,120 C-36,92 -22,80 0,80 C22,80 36,92 36,120 Z"/><path d="M-19,60 C-22,40 22,40 19,60 C20,74 16,96 11,108 L6,108 C10,96 12,80 11,62 L-11,62 C-12,80 -10,96 -6,108 L-11,108 C-16,96 -20,74 -19,60 Z"/><circle cx="0" cy="58" r="14"/></g>
+      <g transform="translate(318,-3)"><path d="M-41,120 C-41,89 -25,76 0,76 C25,76 41,89 41,120 Z"/><circle cx="0" cy="57" r="18"/></g>
+      <g transform="translate(386,8)"><path d="M-34,120 C-34,93 -21,81 0,81 C21,81 34,93 34,120 Z"/><path d="M-18,61 C-21,42 21,42 18,61 C19,74 15,95 10,106 L6,106 C9,95 11,80 10,63 L-10,63 C-11,80 -9,95 -6,106 L-10,106 C-15,95 -19,74 -18,61 Z"/><circle cx="0" cy="59" r="13"/></g>
+    </g></svg>
+  </div>
+  <div class="wrap">
+    <div class="hdr-main">
+      <div class="hdr-mark" id="hdrMark" onclick="openSettings()"></div>
+      <div class="hdr-textcol">
+        <div class="h-title">シゴデキ店長アプリ <small id="hSub">タスク・インスタ・アンケート（試作）</small></div>
+        <button class="view-picker" id="viewPicker" onclick="openStorePicker()"><span id="viewLabel">本部</span></button>
+      </div>
+      <div class="hdr-logo" id="hdrLogo" onclick="openSettings()"></div>
+    </div>
+  </div>
+</header>
+
+<main id="app"></main>
+
+<input type="file" id="logoFile" accept="image/*,application/pdf" style="display:none" onchange="onLogoFile(event)">
+<input type="file" id="photoFile" accept="image/*" style="display:none" onchange="onPhotoFile(event)">
+<input type="file" id="markFile" accept="image/*" style="display:none" onchange="onMarkFile(event)">
+
+<nav class="bottom" id="bottomNav">
+  <button data-m="home"   onclick="go('home')"><span class="ni">🏠</span>ホーム</button>
+  <button data-m="task"   onclick="go('task')"><span class="ni">✅</span>タスク</button>
+  <button data-m="insta"  onclick="go('insta')"><span class="ni">🎬</span>インスタ</button>
+  <button data-m="survey" onclick="go('survey')"><span class="ni">📝</span>アンケート</button>
+  <button data-m="report" onclick="go('report')"><span class="ni">📈</span>レポート</button>
+</nav>
+
+<!-- ===== タスク 追加/編集モーダル ===== -->
+<div class="modal-bg" id="taskModal">
+  <div class="modal">
+    <h2 id="tmTitle">タスクを追加</h2>
+    <div id="scopeBox" style="display:none">
+      <label class="fld">どの店に配る？</label>
+      <div class="seg" id="scopeSeg">
+        <button data-s="all" class="on">全店共通</button>
+        <button data-s="single">店舗を選ぶ</button>
+      </div>
+      <div id="storeChecks" class="seg" style="display:none;margin-top:10px">
+        <button data-store="A店" class="on">A店</button>
+        <button data-store="B店">B店</button>
+        <button data-store="C店">C店</button>
+      </div>
+    </div>
+    <p id="scopeNote" class="scope-note" style="display:none"></p>
+    <label class="fld">分野</label>
+    <select id="fCategory">
+      <option>衛生</option><option>在庫</option><option>設備</option><option>売上</option>
+      <option>ヒト</option><option>販促</option><option>手続き</option><option>部門タスク</option><option>特命タスク</option>
+    </select>
+    <label class="fld">タスク名</label>
+    <input type="text" id="fName" placeholder="例：厨房清掃チェック">
+    <label class="fld">頻度（くりかえし）</label>
+    <div class="seg" id="freqSeg">
+      <button data-f="daily" class="on">毎日</button>
+      <button data-f="weekly">毎週</button>
+      <button data-f="monthlyDay">毎月（日にち）</button>
+      <button data-f="monthlyNth">毎月（第N曜日）</button>
+      <button data-f="once">単発</button>
+    </div>
+    <div class="sub" id="subWeekly" style="display:none">
+      <label class="fld">何曜日に？</label>
+      <select id="fWeekday">
+        <option value="1">毎週 月曜</option><option value="2">毎週 火曜</option><option value="3">毎週 水曜</option>
+        <option value="4">毎週 木曜</option><option value="5">毎週 金曜</option><option value="6">毎週 土曜</option><option value="0">毎週 日曜</option>
+      </select>
+    </div>
+    <div class="sub" id="subMonthlyDay" style="display:none">
+      <label class="fld">毎月 何日に？</label><select id="fMonthDay"></select>
+    </div>
+    <div class="sub" id="subMonthlyNth" style="display:none">
+      <label class="fld">毎月 第何週の…</label>
+      <div style="display:flex;gap:8px">
+        <select id="fNth" style="flex:1"><option value="1">第1</option><option value="2">第2</option><option value="3">第3</option><option value="4">第4</option></select>
+        <select id="fNthWeekday" style="flex:1"><option value="1">月曜</option><option value="2">火曜</option><option value="3">水曜</option><option value="4">木曜</option><option value="5">金曜</option><option value="6">土曜</option><option value="0">日曜</option></select>
+      </div>
+    </div>
+    <div class="sub" id="subOnce" style="display:none">
+      <label class="fld">いつまでに？</label><input type="date" id="fOnceDate">
+    </div>
+    <div class="m-actions">
+      <button class="btn-ghost" onclick="closeModal('taskModal')">やめる</button>
+      <button class="btn-main" onclick="saveTask()">保存する</button>
+    </div>
+    <button class="btn-del" id="tmDel" style="display:none" onclick="deleteTask()">このタスクを削除する</button>
+    <p class="hint" id="freqHint"></p>
+  </div>
+</div>
+
+<!-- ===== 汎用モーダル（インスタ作成・アンケート設定など） ===== -->
+<div class="modal-bg" id="genModal"><div class="modal" id="genBody"></div></div>
+
+<script>
+/* =====================================================================
+   データ（このブラウザの中だけに保存：localStorage）
+   ===================================================================== */
+const STORES=["A店","B店","C店"];
+const KEY="kaito_app_v3";
+let DB, role="hq", curStore="A店", module="home";
+let repStore=null, repId=null, repViewStore=null, repViewId=null;
+const PERF=[
+  {k:"sales",name:"売上",unit:"万円",hi:true},
+  {k:"costRate",name:"原価率",unit:"%",hi:false},
+  {k:"laborRate",name:"人件費率",unit:"%",hi:false},
+  {k:"salesPerHour",name:"人時売上高",unit:"円",hi:true}
+];
+const GOALS=[
+  {k:"sales",name:"売上"},{k:"guests",name:"客数"},{k:"unitPrice",name:"客単価"},
+  {k:"costRate",name:"原価率"},{k:"laborCost",name:"人件費"},{k:"laborProd",name:"人時生産性"}
+];
+// AIアクション提案：目標項目ごとの単位・良し悪しの向き・対応する実データ・提案ネタ（うどん店の業界知見）
+const MACRO_DEMAND="インバウンドが回復し、キャッシュレス・QR決済が定着。物価高で外食を選ぶ目は厳しく『行く理由』づくりが重要。観光・近隣の新規取り込みには多言語メニュー(QR翻訳)・キャッシュレス・Googleマップ整備が効く。";
+const MACRO_PRICE="小麦・だし・光熱費など原材料の高騰が長期化し原価は上振れしやすい。インボイス制度のため仕入は適格請求書発行事業者を選ぶと消費税の仕入税額控除を確保しやすい。値上げは品質・価値の訴求とセットが鉄則。";
+const MACRO_LABOR="最低賃金は年々引き上げられ、人手不足・採用難も深刻。券売機・モバイルオーダー等の省力化投資は、業務改善助成金やIT導入補助金で初期費用を抑えられる場合がある。多能工化と定着策が利益を左右する。";
+const GOAL_INFO={
+  sales:{unit:"万円",hi:true,metric:"sales",macro:MACRO_DEMAND,tips:[
+    {t:"ランチの回転率アップ",d:"11:30〜13:00は先会計に切り替え、相席を必ず案内する。1卓の滞在を平均45分→35分に短縮し、ピークの提供を1日20食増やす。",ev:"成功事例：先会計でピーク提供時間を短縮し客数増",kpi:"ピーク帯(11:30-13:00)の提供食数を毎日記録（目標：+20食/日）"},
+    {t:"数量限定メニュー×インスタ告知",d:"毎日30食の数量限定（単価700円）を用意し、前日20時にインスタのショート動画で告知。完売を目指す。",ev:"成功事例：限定告知で行列形成／失敗例：告知なしは在庫ロス",kpi:"限定の1日販売数を記録（目標：30食/日・完売率90%以上）"},
+    {t:"夜・アイドルタイムの需要開拓",d:"17時以降に『〆うどん＋小鉢＋ドリンク』900円セットを設定し、近隣オフィスへチラシを週2回・各50枚配布する。",ev:"成功事例：夜セットで時間帯売上を底上げ",kpi:"夜帯(17時以降)の売上を毎日記録（目標：+5万円/日）"}]},
+  guests:{unit:"人",hi:true,metric:null,macro:MACRO_DEMAND,tips:[
+    {t:"MEO（Googleマップ）強化",d:"Googleマップに毎週3枚以上の写真を追加し、届いたクチコミには48時間以内に100%返信する。",ev:"成功事例：クチコミ返信率向上で地図流入が増加",kpi:"地図経由の来店数・クチコミ件数を毎週記録（クチコミ返信率100%）"},
+    {t:"ショート動画で認知拡大",d:"打ちたて・行列の動画を週3本（火・木・土）投稿。各30秒以内、サムネ文を必ず付ける。",ev:"成功事例：1本のバズで週末客数が増加",kpi:"投稿本数と保存数を週次で記録（目標：週3本・保存数 前週比+10%）"},
+    {t:"アイドルタイム限定クーポン",d:"14〜17時限定で『100円引き』をインスタ提示で配布し、空席時間に1日10人の来店を増やす。",ev:"失敗例：終日割引は客単価を下げるだけ",kpi:"14-17時の客数を毎日記録（目標：+10人/日）"},
+    {t:"インバウンド・多言語対応【時流】",d:"卓上QRの多言語メニュー（英・中・韓）とキャッシュレスを整備し、観光・外国人客を取り込む。英語クチコミにも返信する。",ev:"時流：インバウンド回復・キャッシュレス浸透",kpi:"外国人客数・キャッシュレス比率を週次で記録（目標：キャッシュレス60%）"}]},
+  unitPrice:{unit:"円",hi:true,metric:null,macro:MACRO_PRICE,tips:[
+    {t:"トッピング・サイドの提案販売",d:"会計時に『だし巻き(+250円)』か『おにぎり(+150円)』を全員に一声かけて提案。1日30組への声かけを目標にする。",ev:"成功事例：セット訴求で客単価+50〜100円",kpi:"サイド注文率を毎日記録（目標：注文率30%・客単価+50円）"},
+    {t:"季節限定の高単価メニュー",d:"客単価+150円になる季節限定（鴨南蛮950円など）を1品投入し、来店客の2割に注文してもらう。",ev:"成功事例：限定高単価で単価とSNS話題を両立",kpi:"限定メニューの注文比率を記録（目標：20%）"},
+    {t:"価値訴求型の適正値上げ【時流】",d:"原材料高に対し、看板商品を30〜50円値上げ。同時に量・国産だし等の価値をPOPで明記し、値ごろ感を保つ。値引きはしない。",ev:"時流：原材料高／失敗例：説明なき値上げは客数減",kpi:"値上げ後の客数と客単価を毎日記録（客数維持＋客単価+50円）"}]},
+  costRate:{unit:"%",hi:false,metric:"costRate",macro:MACRO_PRICE,tips:[
+    {t:"発注ロットと相見積もり",d:"小麦粉・だし・薬味の3品を四半期1回、2社以上から相見積もり。発注は週2回・必要量+5%以内に抑える。",ev:"成功事例：発注最適化で原価率を1〜2pt改善",kpi:"食材費÷売上を毎日記録（目標：原価率-1pt）"},
+    {t:"ロス・廃棄の見える化",d:"閉店後に廃棄量をグラム単位で毎日記録し、翌日の仕込みを前日実績の±10%で調整する。",ev:"成功事例：廃棄記録で過剰仕込みを削減",kpi:"1日の廃棄額を記録（目標：廃棄を売上の1%以内）"},
+    {t:"インボイス対応で仕入を最適化【制度】",d:"主要仕入先3社を適格請求書発行事業者に切り替え、消費税の仕入税額控除を確保する。請求書はインボイス要件で毎月チェック。",ev:"制度：インボイス制度（適格請求書）",kpi:"適格請求書発行事業者からの仕入比率を記録（目標：90%以上）"}]},
+  laborCost:{unit:"%",hi:false,metric:"laborRate",macro:MACRO_LABOR,tips:[
+    {t:"ピーク集中シフト",d:"アイドルタイム(14-17時)を2名→1名に、ピーク(11:30-13:30)を1名増やす。シフトは週単位で組み直す。",ev:"成功事例：シフト最適化で人件費率を改善",kpi:"時間帯別の人時数を毎日記録（目標：人件費率-1pt）"},
+    {t:"多能工化・定着策",d:"全アルバイトが会計・配膳・仕込みの3役をこなせるよう月2回・各30分練習。採用難に備え時給以外の定着策（まかない・表彰）も用意。",ev:"時流：人手不足・採用難",kpi:"1人の担当役割数と離職率を記録（目標：全員3役・離職0）"},
+    {t:"補助金で省力化投資（最賃対応）【制度】",d:"券売機・モバイルオーダーを業務改善助成金/IT導入補助金で導入し、ピークの作業を1名分削減。最低賃金引上げに先回りする。",ev:"制度：業務改善助成金・IT導入補助金",kpi:"省力化による削減人時を記録（目標：-10人時/週）"}]},
+  laborProd:{unit:"円",hi:true,metric:"salesPerHour",macro:MACRO_LABOR,tips:[
+    {t:"動線・レイアウト改善",d:"茹で台〜盛り付け〜提供の歩数を測り、配置を変えて1食あたりの提供を平均10秒短縮する。",ev:"成功事例：レイアウト改善で提供時間短縮",kpi:"1時間あたりの提供食数を記録（目標：+5%）"},
+    {t:"仕込みのバッチ化と前倒し",d:"だし・薬味・トッピングを開店前に1日分まとめて仕込み、ピーク中の仕込み作業を0回にする。",ev:"成功事例：前倒し仕込みで人時売上が向上",kpi:"ピーク中の仕込み発生回数を記録（目標：0回）"},
+    {t:"券売機・モバイルオーダーで省力化【制度】",d:"IT導入補助金等を活用して券売機/モバイルオーダーを導入し、注文・会計を自動化。空いた人手を調理・提供に回す。",ev:"制度：IT導入補助金／時流：人手不足",kpi:"注文→提供のリードタイムを記録（目標：5分以内）"}]}
+};
+// 月ごとの季節・学校の休み・行事と、その時期ならではの施策（需要側の目標で活用）
+const CAL={
+  1:{label:"正月明け・厳寒・受験/成人式",note:"寒さで温かい麺が伸びる。",tips:[{t:"寒さ×温かいメニュー訴求【時期】",d:"鍋焼き・カレーうどんを主役にPOP化し、15時以降の『温まりセット』を設定する。",ev:"時期：厳寒で温かい麺の需要増",kpi:"温かい限定の注文比率を毎日記録（目標：30%）"}]},
+  2:{label:"節分・バレンタイン・底冷え",note:"2月は来店が鈍りやすい閑散期。",tips:[{t:"閑散期の集客施策【時期】",d:"平日14-17時に『温かいうどん＋ミニ丼』のワンコイン的セットを用意。節分など歳時の限定も。",ev:"時期：2月は客足が鈍りやすい",kpi:"平日14-17時の客数を記録（前年比+10%）"}]},
+  3:{label:"卒業・春休み開始・歓送迎会",note:"学生が春休み、人の動きが活発。",tips:[{t:"春休み・歓送迎需要【時期】",d:"学生の春休みに合わせ平日昼の大盛無料、少人数の歓送迎向けセットを用意する。",ev:"時期：春休み・歓送迎会シーズン",kpi:"学生客数・セット注文数を記録"}]},
+  4:{label:"新生活・花見・GW前",note:"新社会人/新入生など新規来店の好機。",tips:[{t:"新生活の新規取り込み【時期】",d:"新社会人・新入生向けに『初回トッピング無料』をインスタ告知し、近隣の新規を開拓する。",ev:"時期：新生活で来店行動が変わる",kpi:"新規客数(クーポン利用数)を記録"}]},
+  5:{label:"GW(〜5/5)・行楽",note:"連休は家族・行楽、明けは通常期。",tips:[{t:"GWの家族・行楽需要【時期】",d:"GWは家族向けキッズメニューと回転率重視のオペに。連休明けは通常体制へ即戻す。",ev:"時期：GWは家族・行楽需要",kpi:"GW期間の客数・客単価を前年と比較"}]},
+  6:{label:"梅雨・祝日なし・父の日",note:"6月は祝日がなく雨で客足が緩む。",tips:[{t:"雨の日対策【時期】",d:"雨の日限定で『＋1品サービス』またはデリバリー送料無料。雨予報の前日夜にインスタ告知する。",ev:"時期：梅雨で客足が落ちやすい／6月は祝日なし",kpi:"雨天日の客数・デリバリー件数を記録（雨天客数 前年比+10%）"}]},
+  7:{label:"夏休み開始・猛暑・夏祭り",note:"学生が夏休み、冷やし需要が急増。",tips:[{t:"夏休み×冷やしメニュー【時期】",d:"冷やしうどん・ぶっかけを主役に。学生向け大盛無料(14-17時)、家族向けキッズ価格を設定する。",ev:"時期：夏休み・猛暑で冷やし需要増",kpi:"冷やし系の注文比率・学生/家族客数を記録（冷やし比率40%）"}]},
+  8:{label:"お盆・夏休み最盛・猛暑",note:"帰省・旅行、猛暑日が続く。",tips:[{t:"お盆・猛暑の需要取り込み【時期】",d:"冷やし主役を継続。お盆は家族・帰省客向けに大盛/お子様メニュー、猛暑日はデリバリーを強化する。",ev:"時期：お盆・猛暑",kpi:"冷やし比率・デリバリー件数を記録"}]},
+  9:{label:"残暑→秋・新学期・連休",note:"温・冷の端境期。シルバーウィーク。",tips:[{t:"残暑〜秋の切替【時期】",d:"前半は冷やし継続、後半に温かい新メニューを予告。連休は行楽需要を狙う。",ev:"時期：残暑と秋の端境期",kpi:"温・冷の注文比率の推移を記録"}]},
+  10:{label:"行楽・食欲の秋・ハロウィン",note:"高単価の季節限定が映える。",tips:[{t:"食欲の秋×季節限定【時期】",d:"きのこ・鴨など季節の高単価限定を投入。ハロウィン週は映える盛付で話題化する。",ev:"時期：行楽・食欲の秋",kpi:"季節限定の注文比率・客単価を記録"}]},
+  11:{label:"寒さ本格化・忘年会前",note:"温かい麺＋宴会予約の準備期。",tips:[{t:"温かい麺＋忘年会前需要【時期】",d:"鍋焼き等を主役化。近隣オフィスへ少人数忘年会・テイクアウト予約の案内を配布する。",ev:"時期：寒さ本格化・忘年会シーズン入り",kpi:"温かい限定比率・予約件数を記録"}]},
+  12:{label:"年末・忘年会・寒さ",note:"外食の最需要期。取りこぼし注意。",tips:[{t:"年末最需要の取りこぼし防止【時期】",d:"ピークは回転重視オペ＋テイクアウト強化、人員を厚めに配置する。",ev:"時期：年末は外食最需要期",kpi:"12月の日次売上・テイクアウト件数を記録"}]}
+};
+// 全国の時事・トピック（業界に効くもの）
+const NATIONAL_TOPICS=[
+  {t:"消費税・軽減税率／減税の動き",d:"持ち帰りは8%・店内飲食は10%。価格と案内を分かりやすく。消費税減税の議論も報じられており、税率変更時はメニュー価格と会計設定を即対応できる体制を。"},
+  {t:"テイクアウト・デリバリー",d:"中食需要は定着。丼・いなり・天ぷら弁当など持ち帰り商品や、雨の日のデリバリーで機会ロスを補う。配達手数料(約30%)を見込んだ価格設計を。"},
+  {t:"上場外食大手の打ち手",d:"大手は価格改定＋価値訴求、モバイルオーダー/セルフレジ、クーポンアプリ・サブスク、期間限定・トッピング訴求を推進。取り入れられる打ち手は模倣する。"}
+];
+
+function fmt(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function parse(s){const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d);}
+function todayStr(){return fmt(new Date());}
+function daysBetween(a,b){return Math.round((parse(b)-parse(a))/86400000);}
+function nextDateStr(n){const d=new Date();d.setDate(d.getDate()+n);return fmt(d);}
+function esc(s){return(""+s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+/* ===== インスタ：台本のもと ===== */
+const SCRIPTS=[
+ {title:"行列のできる時間帯の店内", points:["開店前の仕込み","のれんを出す瞬間","席が埋まる早回し"], thumb:"行列必至の打ちたて"},
+ {title:"打ちたて麺の湯気アップ", points:["製麺機から出る麺","茹で上げの湯気","しめる水しぶき"], thumb:"打ちたて、ここにしかない"},
+ {title:"数量限定・鍋焼きうどんの実食", points:["グツグツの鍋","卵をくずす","ふぅふぅして一口"], thumb:"数量限定30食"},
+ {title:"だしの一番搾り", points:["かつお節を入れる","黄金色のだし","お椀に注ぐ"], thumb:"毎朝ひいてます"},
+ {title:"トッピング全部のせ", points:["天ぷらを並べる","のせていく","完成の俯瞰"], thumb:"全部のせの破壊力"},
+ {title:"職人の手仕事・麺切り", points:["生地を伸ばす","リズミカルな包丁","均一な麺"], thumb:"手切りの理由"},
+ {title:"締めの一杯・夜うどん", points:["夜の店内の灯り","湯気の立つ一杯","すする音"], thumb:"飲んだ後の救世主"},
+ {title:"スタッフのまかない紹介", points:["まかないを作る","盛り付け","いただきます"], thumb:"これが食べたくて出勤"},
+];
+function genCaption(s){
+  return "【"+s.title+"】\n"+s.points[0]+"から"+s.points[s.points.length-1]+"まで一気にお届け！\n"
+    +"打ちたて・できたてのうどんを、ぜひお店で。ご来店お待ちしています😊\n\n"
+    +"#うどん #打ちたて #手打ちうどん #東京グルメ #ランチ #釜揚げうどん";
+}
+
+/* ===== アンケート：ES設問テンプレート ===== */
+const ES_TEMPLATE={
+ A:{name:"やりがいを持って働ける環境の整備",subs:[
+  {key:"A1",name:"理念・ビジョンへの共感",qs:[
+   "社長や経営陣は、時代の変化を適切に捉えられていると思う","会社の目指す姿を聞く機会があると思う",
+   "企業理念や行動指針が整理されていると思う","企業理念や行動指針は社員に浸透していると思う","企業理念や行動指針はキャストに浸透していると思う"]},
+  {key:"A2",name:"仕事への誇り・ステイタス",qs:[
+   "社員は企業ブランドや商品ブランドに誇りを持っていると思う","社員は自身の職種や業務内容に誇りを持っていると思う",
+   "社会的に意義のある仕事をしていると思う","同業他社と比較して強みがあると思う","自分はこの会社に必要とされていると思う","この会社で働いていることを誇りに思う"]},
+  {key:"A3",name:"自身の将来像",qs:[
+   "キャリアパスは明確だと思う","キャリアパス実現のための教育・研修が充実していると思う","適正な人員配置がなされていると思う",
+   "管理者層は部下育成に意欲的だと思う","仕事は属人的でなく仕組み化されていると思う","社員は自身の将来像を描けていると思う"]}
+ ]},
+ B:{name:"安心して働ける環境の整備",subs:[
+  {key:"B1",name:"社員間の関係性",qs:[
+   "部署間で交流する機会が設けられていると思う","上司や先輩へ相談しやすい雰囲気があると思う","部署をまたいで協力しあう風土があると思う",
+   "良い事例をすぐ仲間と共有する意識があると思う","年齢や役職に関係なく意見を言える雰囲気があると思う","部署間の関係性が良好だと思う"]},
+  {key:"B2",name:"上司への信用・信頼",qs:[
+   "上司は部下の能力を理解して仕事を与えていると思う","上司は部下にチャレンジさせる意欲があると思う","上司は部下の失敗を受け入れる度量があると思う",
+   "上司は責任を部下に押し付けないと思う","上司は部下の手柄を自身のものにしないと思う","自分の目標となる上司がいると思う"]},
+  {key:"B3",name:"働きやすい環境",qs:[
+   "性別関係なく活躍できる環境が整っていると思う","育児がしやすい環境が整っていると思う","定年退職後も働ける環境が整っていると思う",
+   "プライベートと仕事が両立できる環境が整っていると思う","希望すれば誰でも定年まで働ける環境が整っていると思う"]},
+  {key:"B4",name:"衛生的な環境",qs:[
+   "特別な理由がない限り解雇されることはないと思う","セクハラやパワハラは起こりづらいと思う","過度な期待やプレッシャーを与えていないと思う",
+   "労働時間は同業他社と比較して適切だと思う","公正・公平な経営を行っていると思う"]},
+  {key:"B5",name:"報酬／評価制度",qs:[
+   "明確な賃金・評価制度があると思う","昇格・昇給すべき人が昇格・昇給していると思う","手当（住宅・家族など）が充実していると思う",
+   "賞与は適切に支給されていると思う","仕事への貢献に見合った給与が支払われていると思う"]},
+  {key:"B6",name:"理念に合致した採用活動",qs:[
+   "会社にあった人材を選べるだけの応募が来ていると思う","採用担当者は会社の実情を理解していると思う","入社前後のイメージのギャップは少ないと思う",
+   "選考は会社にあった人材を判断できる内容だと思う","理念・ビジョンにあった人材を採用できていると思う"]}
+ ]}
+};
+const AGES=["20歳未満","20代","30代","40代","50歳以上"];
+const TENURES=["2年未満","2年以上5年未満","5年以上10年未満","10年以上15年未満","15年以上"];
+// 全設問IDの平坦リスト
+function allQ(){const r=[];["A","B"].forEach(g=>ES_TEMPLATE[g].subs.forEach(s=>s.qs.forEach((q,i)=>r.push({id:s.key+"_"+i,text:q,sub:s.key,subName:s.name,grp:g}))));return r;}
+
+/* ===== 初期データ ===== */
+function seed(){
+  const d=new Date();
+  // --- タスク ---
+  const base=[
+    {cat:"衛生",name:"厨房清掃チェック",freq:"daily"},
+    {cat:"衛生",name:"冷蔵庫の温度記録",freq:"daily"},
+    {cat:"在庫",name:"棚卸し（小麦粉・だし・麺・薬味）",freq:"monthlyDay",day:1},
+    {cat:"設備",name:"製麺機・釜・フライヤーの点検",freq:"monthlyDay",day:10},
+    {cat:"売上",name:"月次売上の本部提出",freq:"monthlyDay",day:5},
+    {cat:"ヒト",name:"シフト作成・提出、勤怠の締め",freq:"monthlyDay",day:25},
+    {cat:"販促",name:"ワンタップ・インスタの投稿企画",freq:"weekly",weekday:1},
+    {cat:"手続き",name:"食品衛生責任者証の更新",freq:"once",onceDate:nextDateStr(40)},
+    {cat:"部門タスク",name:"夏季限定メニューの試作〜導入",freq:"monthlyDay",day:15},
+    {cat:"特命タスク",name:"本部からの個別指示への対応",freq:"weekly",weekday:5},
+  ];
+  const doneRate={"A店":0.9,"B店":0.65,"C店":0.4};
+  const stores={};
+  STORES.forEach(s=>{
+    stores[s]=base.map((b,i)=>{
+      const t={id:s+"_"+i,groupId:"g"+i,scope:"all",cat:b.cat,name:b.name,freq:b.freq,
+        weekday:b.weekday,day:b.day,nth:b.nth,nthWeekday:b.nthWeekday,onceDate:b.onceDate,completions:[]};
+      if(Math.random()<doneRate[s]) t.completions.push(cycleKey(t,d));
+      return t;
+    });
+  });
+  // --- インスタ設定・投稿 ---
+  const settings={"A店":{approval:false,lastScript:0},"B店":{approval:true,lastScript:2},"C店":{approval:false,lastScript:4}};
+  const posts={
+    "A店":[{id:"pA1",store:"A店",status:"posted",scriptTitle:"打ちたて麺の湯気アップ",caption:genCaption(SCRIPTS[1]),thumbText:SCRIPTS[1].thumb,when:nextDateStr(-2).slice(5).replace("-","/")+" 公開",at:nextDateStr(-2)}],
+    "B店":[{id:"pB1",store:"B店",status:"pending",scriptTitle:"数量限定・鍋焼きうどんの実食",caption:genCaption(SCRIPTS[2]),thumbText:SCRIPTS[2].thumb,when:"予約：明日 11:00",at:nextDateStr(1)}],
+    "C店":[]
+  };
+  // --- お知らせ ---
+  const notices=[
+    {date:fmt(d),text:"夏季限定メニューの試作、今月15日までに各店で着手してください。"},
+    {date:nextDateStr(-1),text:"ES満足度調査を配信中です。締切は今月末。みなさん回答をお願いします。"},
+  ];
+  // --- アンケート（ES）。サンプル回答つき ---
+  const survey={
+    id:"sv1",title:"従業員満足度（ES）調査 2026",status:"active",
+    attr:{roles:["エリアマネージャー","店長","副店長","社員","アルバイト・パート"],depts:["A店","B店","C店","本部"]},
+    responses:[]
+  };
+  seedResponses(survey,18);
+  return {stores,settings,posts,notices,surveys:[survey],reports:seedReports()};
+}
+function seedReports(){
+  const budgets={
+    "A店":{sales:{budget:800,prev:760},costRate:{budget:30,prev:31},laborRate:{budget:25,prev:26},salesPerHour:{budget:5500,prev:5300}},
+    "B店":{sales:{budget:700,prev:690},costRate:{budget:31,prev:30},laborRate:{budget:26,prev:25},salesPerHour:{budget:5200,prev:5100}},
+    "C店":{sales:{budget:600,prev:640},costRate:{budget:32,prev:31},laborRate:{budget:27,prev:28},salesPerHour:{budget:4800,prev:4900}}
+  };
+  const forms={
+    "A店":[{id:"rA1",month:"2026-05",status:"approved",
+      actuals:{sales:840,costRate:29,laborRate:24,salesPerHour:5700},
+      reviews:{sales:"SNSの数量限定告知でピーク時間の客数が増えた。",costRate:"ロス管理を徹底し廃棄を削減できた。",laborRate:"ピーク以外のシフトを最適化した。",salesPerHour:"券売機の導入で回転を上げられた。"},
+      chance:"梅雨明けの需要増。冷やしうどんの新メニュー投入が狙い目。",threat:"近隣に競合うどん店が開店予定。",
+      goals:{sales:{target:"860万円",plan:"冷やし系の限定を週替わりで投入"},guests:{target:"前年比+5%",plan:"インスタのショート動画を週3本"},unitPrice:{target:"+30円",plan:"トッピングのセット提案"},costRate:{target:"29%以下",plan:"発注精度を上げ廃棄を減らす"},laborCost:{target:"予算内",plan:"ピーク集中シフトに調整"},laborProd:{target:"+5%",plan:"仕込みの前倒しで効率化"}},
+      submittedAt:"2026-06-03",approvedAt:"2026-06-04"}],
+    "B店":[{id:"rB1",month:"2026-06",status:"submitted",
+      actuals:{sales:680,costRate:32,laborRate:27,salesPerHour:5000},
+      reviews:{sales:"",costRate:"",laborRate:"",salesPerHour:""},
+      chance:"近隣オフィスのランチ需要が伸びている。",threat:"アルバイト1名が退職予定で人手が薄くなる。",
+      goals:{},submittedAt:"2026-06-10"}],
+    "C店":[]
+  };
+  return {budgets,forms};
+}
+function seedResponses(sv,n){
+  const qs=allQ();
+  const deptPos={"A店":0.82,"B店":0.6,"C店":0.46,"本部":0.72};
+  const goods=["最近、新人が定着してくれて嬉しい","お客様に『また来たよ』と言われた","チームの雰囲気が良くなってきた","まかないが美味しい"];
+  const bads=["シフトがきつい時期がある","評価の基準がもう少し分かるとうれしい","休憩がとりにくい日がある","人手が足りない時間帯がある"];
+  for(let k=0;k<n;k++){
+    const dept=sv.attr.depts[Math.floor(Math.random()*sv.attr.depts.length)];
+    const p=deptPos[dept]||0.6;
+    const answers={};
+    qs.forEach(q=>{ answers[q.id]= Math.random()<p ? (Math.random()<0.6?1:2) : (Math.random()<0.6?3:4); });
+    const total= Math.random()<p?(Math.random()<0.6?1:2):(Math.random()<0.6?3:4);
+    sv.responses.push({
+      attrs:{gender:Math.random()<0.5?"男性":"女性",age:AGES[Math.floor(Math.random()*AGES.length)],
+        tenure:TENURES[Math.floor(Math.random()*TENURES.length)],
+        role:sv.attr.roles[Math.floor(Math.random()*sv.attr.roles.length)],dept:dept},
+      answers, total,
+      freeGood: Math.random()<0.4?goods[Math.floor(Math.random()*goods.length)]:"",
+      freeBad: Math.random()<0.4?bads[Math.floor(Math.random()*bads.length)]:""
+    });
+  }
+}
+function load(){const raw=localStorage.getItem(KEY);try{DB=raw?JSON.parse(raw):seed();}catch(e){DB=seed();}
+  if(!DB.reports)DB.reports=seedReports();
+  if(!DB.localNotes)DB.localNotes={"A店":"","B店":"","C店":""};
+  save();}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){alert("画像のデータが大きすぎて保存できませんでした。もう少し小さい画像をお使いください。");}}
+
+/* =====================================================================
+   タスク：くりかえし計算（前バージョンから踏襲）
+   ===================================================================== */
+function cycleKey(t,ref){const d=ref||new Date();switch(t.freq){
+  case"daily":return"d"+fmt(d);case"weekly":return"w"+isoWeek(d);
+  case"monthlyDay":case"monthlyNth":return"m"+d.getFullYear()+"-"+(d.getMonth()+1);case"once":return"once";}}
+function isoWeek(d){const x=new Date(d);x.setHours(0,0,0,0);x.setDate(x.getDate()+3-((x.getDay()+6)%7));
+  const w1=new Date(x.getFullYear(),0,4);return x.getFullYear()+"-W"+(1+Math.round(((x-w1)/86400000-3+((w1.getDay()+6)%7))/7));}
+function isDone(t){return t.completions.includes(cycleKey(t));}
+function toggleDone(t){const k=cycleKey(t),i=t.completions.indexOf(k);if(i>=0)t.completions.splice(i,1);else t.completions.push(k);save();}
+function nextDue(t){const now=new Date();now.setHours(0,0,0,0);const done=isDone(t);switch(t.freq){
+  case"daily":if(!done)return fmt(now);{const x=new Date(now);x.setDate(x.getDate()+1);return fmt(x);}
+  case"weekly":{let c=upWeekday(now,t.weekday);if(done){c=new Date(c);c.setDate(c.getDate()+7);}return fmt(c);}
+  case"monthlyDay":{let c=monthDay(now.getFullYear(),now.getMonth(),t.day);if(c<now||done)c=monthDay(now.getFullYear(),now.getMonth()+1,t.day);return fmt(c);}
+  case"monthlyNth":{let c=nthWk(now.getFullYear(),now.getMonth(),t.nth,t.nthWeekday);if(c<now||done)c=nthWk(now.getFullYear(),now.getMonth()+1,t.nth,t.nthWeekday);return fmt(c);}
+  case"once":return t.onceDate;}}
+function upWeekday(f,wd){const d=new Date(f);d.setDate(d.getDate()+((wd-d.getDay()+7)%7));return d;}
+function monthDay(y,m,day){const last=new Date(y,m+1,0).getDate();return new Date(y,m,Math.min(day,last));}
+function nthWk(y,m,nth,wd){const first=new Date(y,m,1),off=(wd-first.getDay()+7)%7;let dt=1+off+(nth-1)*7;const last=new Date(y,m+1,0).getDate();if(dt>last)dt-=7;return new Date(y,m,dt);}
+function dueState(t){if(isDone(t))return"done";const diff=daysBetween(todayStr(),nextDue(t));if(diff<0)return"over";if(diff<=3)return"soon";return"ok";}
+const wdJa=["日","月","火","水","木","金","土"];
+function freqText(t){switch(t.freq){case"daily":return"毎日";case"weekly":return"毎週"+wdJa[t.weekday]+"曜";
+  case"monthlyDay":return"毎月"+t.day+"日";case"monthlyNth":return"毎月第"+t.nth+wdJa[t.nthWeekday]+"曜";case"once":return"単発";}}
+function dueText(t){const due=nextDue(t),diff=daysBetween(todayStr(),due),[y,m,d]=due.split("-"),md=Number(m)+"/"+Number(d);
+  if(isDone(t))return"完了ずみ";if(diff<0)return md+"（"+(-diff)+"日 過ぎています）";if(diff===0)return md+"（今日まで）";
+  if(diff===1)return md+"（明日まで）";if(diff<=3)return md+"（あと"+diff+"日）";return md+"まで";}
+function achievement(s){const a=DB.stores[s],total=a.length,done=a.filter(isDone).length;return{done,total,pct:total?Math.round(done/total*100):0};}
+
+/* =====================================================================
+   画面の土台
+   ===================================================================== */
+function updateViewLabel(){
+  const el=document.getElementById("viewLabel");if(!el)return;
+  el.textContent = role==="hq" ? "本部" : curStore;
+}
+// 店舗が多くても探しやすい：検索つきの一覧から選ぶ
+function openStorePicker(){
+  document.getElementById("genBody").innerHTML=`<h2>表示を切り替え</h2>
+    <input type="text" id="storeSearch" placeholder="🔍 店舗名で検索（例：A店）" oninput="filterStoreList()">
+    <div id="storeList" style="margin-top:12px;max-height:60vh;overflow:auto"></div>`;
+  openModal("genModal");renderStoreList("");
+  setTimeout(()=>{const s=document.getElementById("storeSearch");if(s)s.focus();},50);
+}
+function renderStoreList(q){
+  q=(q||"").trim();
+  const items=[{label:"本部",kind:"hq",badge:"全店管理"}].concat(STORES.map(s=>({label:s,kind:"store",store:s,badge:"店舗"})));
+  const list=items.filter(it=>!q||it.label.indexOf(q)>=0);
+  const html=list.map(it=>{
+    const on=it.kind==="hq"?role==="hq":(role==="manager"&&curStore===it.store);
+    return `<button class="store-item ${on?'on':''}" onclick="selectView('${it.kind}','${it.store||''}')">
+      <span>${esc(it.label)}</span><span class="badge">${on?'✓ 表示中':it.badge}</span></button>`;
+  }).join("");
+  document.getElementById("storeList").innerHTML = html || `<div class="empty">「${esc(q)}」に一致する店舗がありません</div>`;
+}
+function filterStoreList(){renderStoreList(document.getElementById("storeSearch").value);}
+function selectView(kind,store){if(kind==="hq"){role="hq";}else{role="manager";curStore=store;}closeModal("genModal");render();}
+function go(m){module=m;repViewId=null;render();}
+function render(){
+  updateViewLabel();
+  updateHeaderMark();
+  updateHeaderLogo();
+  updateHeaderPhoto();
+  document.querySelectorAll("#bottomNav button").forEach(b=>b.className=b.dataset.m===module?"on":"");
+  document.getElementById("hSub").textContent = role==="hq"?"本部モード":curStore+"・店長モード";
+  const app=document.getElementById("app");
+  app.innerHTML = module==="home"?renderHome():module==="task"?renderTask():module==="insta"?renderInsta():module==="survey"?renderSurvey():renderReport();
+}
+
+/* ===== ロゴ（ヘッダー右・正方形） ===== */
+// ヘッダー右に固定表示する企業マーク（背景の一部・変更不可）。
+// kaito-app フォルダに header-mark.png（透過PNG）を置くと、それが白色で固定表示される。
+// 画像が無い場合のみ、下の簡易プレースホルダーを表示する。
+const MARK_FALLBACK=`<svg viewBox="0 0 120 96" xmlns="http://www.w3.org/2000/svg"><text x="60" y="60" font-family="Arial,sans-serif" font-weight="900" font-size="22" fill="#ffffff" text-anchor="middle">LOGO</text><text x="60" y="82" font-family="Arial,sans-serif" font-size="11" fill="#ffffff" text-anchor="middle" opacity="0.85">header-mark.png</text></svg>`;
+function updateHeaderLogo(){
+  const el=document.getElementById("hdrLogo");if(!el)return;
+  el.innerHTML = `<img src="header-mark.png" alt="企業ロゴ" class="fixed-mark" onerror="this.outerHTML=MARK_FALLBACK">`;
+  sizeHeaderImages();
+}
+function updateHeaderMark(){
+  const el=document.getElementById("hdrMark");if(!el)return;
+  el.innerHTML = DB.headerMark ? `<img src="${DB.headerMark}" alt="店舗ロゴ">` : `<span class="ph">店舗<br>ロゴ</span>`;
+  sizeHeaderImages();
+}
+// 左マーク・右ロゴをヘッダー高さの85%の正方形に（マークを外した状態で高さを測り、暴走を防ぐ）
+function sizeHeaderImages(){
+  const h=document.querySelector("header");if(!h)return;
+  const mk=document.getElementById("hdrMark"),lg=document.getElementById("hdrLogo");
+  const pm=mk?mk.style.display:"",pl=lg?lg.style.display:"";
+  if(mk)mk.style.display="none";if(lg)lg.style.display="none";
+  const base=h.offsetHeight;
+  if(mk)mk.style.display=pm;if(lg)lg.style.display=pl;
+  const s=Math.round(base*0.85);
+  [mk,lg].forEach(b=>{if(b){b.style.width=s+"px";b.style.height=s+"px";}});
+}
+function pickLogo(){document.getElementById("logoFile").click();}
+function onMarkFile(e){
+  const f=e.target.files&&e.target.files[0];if(!f)return;
+  if(f.type.indexOf("image/")!==0){alert("マークは画像（PNG・JPG）を選んでください。白・透過PNGがおすすめです。");e.target.value="";return;}
+  const r=new FileReader();r.onload=()=>{DB.headerMark=r.result;save();render();refreshSettings();};r.readAsDataURL(f);
+  e.target.value="";
+}
+function removeHeaderMark(){DB.headerMark=null;save();render();refreshSettings();}
+function refreshSettings(){if(document.getElementById("genModal").classList.contains("on"))openSettings();}
+
+/* ===== 設定（ロゴ・背景写真などの各種設定） ===== */
+function openSettings(){
+  let h=`<h2>⚙ 設定</h2>`;
+  h+=`<div class="sec-h"><span class="dot"></span>ヘッダー右の企業マーク（固定）</div><div class="card">
+    <div class="t-meta" style="line-height:1.7">ヘッダー右の企業マークは<b>背景の一部として固定</b>で、アプリ内からは変更できません。<br>
+    表示するには、<b>kaito-app フォルダに「header-mark.png」（背景透過のPNG）を置いてください</b>。自動で白色化してヘッダーに固定表示されます（縦横比はそのまま中央に配置）。<br>
+    ※別企業向けに転用するときは、この1ファイルを差し替えるだけでヘッダーのマークが切り替わります。</div></div>`;
+  h+=`<div class="sec-h"><span class="dot"></span>店舗のロゴ（ヘッダー左）</div><div class="card">`;
+  h+= DB.headerMark
+    ? `<div style="text-align:center;margin-bottom:10px"><img src="${DB.headerMark}" style="height:64px;max-width:80%;object-fit:contain;background:#fff;border-radius:10px;padding:4px"></div>`
+    : `<div class="t-meta" style="margin-bottom:10px">未設定です。お店のロゴ画像（正方形・PNG/JPG）がおすすめです。</div>`;
+  h+=`<div style="display:flex;gap:8px">
+      <button class="btn-line" style="margin:0" onclick="document.getElementById('markFile').click()">${DB.headerMark?"店舗ロゴを変更":"店舗ロゴを選ぶ"}（PNG/JPG）</button>
+      ${DB.headerMark?`<button class="btn-line" style="margin:0;color:var(--red);border-color:var(--red-bg)" onclick="removeHeaderMark()">削除</button>`:""}
+    </div></div>`;
+  h+=`<div class="sec-h"><span class="dot"></span>ヘッダーの背景写真（透かし）</div><div class="card">
+    <div class="t-meta" style="margin-bottom:10px">お店の店内写真を透かして表示できます（未設定のときは雰囲気イラスト）。</div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-line" style="margin:0" onclick="document.getElementById('photoFile').click()">📷 店内写真を選ぶ</button>
+      ${DB.headerPhoto?`<button class="btn-line" style="margin:0;color:var(--red);border-color:var(--red-bg)" onclick="removeHeaderPhoto()">標準に戻す</button>`:""}
+    </div></div>`;
+  h+=`<div class="sec-h"><span class="dot"></span>近隣の予定・時事メモ（店舗ごと）</div><div class="card">
+    <div class="t-meta" style="margin-bottom:8px">学園祭・地域の祭り・道路工事・近隣イベント・小中学生や大学の休みなどを書くと、AI提案がその予定に合わせて具体的になります。</div>`;
+  STORES.forEach(s=>{h+=`<label class="fld">${s}</label><textarea id="ln_${s}" placeholder="例：7/20 近くの大学で学園祭／毎週土曜は商店街マルシェ／8月は近隣中学が部活合宿">${esc((DB.localNotes&&DB.localNotes[s])||"")}</textarea>`;});
+  h+=`<button class="btn-grad" style="margin-top:10px" onclick="saveLocalNotes()">近隣メモを保存</button></div>`;
+  h+=`<div class="m-actions"><button class="btn-main" onclick="closeModal('genModal')">閉じる</button></div>`;
+  document.getElementById("genBody").innerHTML=h;openModal("genModal");
+}
+function saveLocalNotes(){
+  if(!DB.localNotes)DB.localNotes={};
+  STORES.forEach(s=>{const el=document.getElementById("ln_"+s);if(el)DB.localNotes[s]=el.value;});
+  save();alert("近隣メモを保存しました。AIアクション提案に反映されます。");
+}
+
+/* ===== ヘッダー背景写真（透かし） ===== */
+// 写真未設定のときに出す「店内の雰囲気」イラスト（暖色のペンダント照明・カウンター・ボトル棚など）
+const DEFAULT_RESTAURANT_SVG=`<svg viewBox="0 0 430 120" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="#fff" stroke-width="0" >
+    <!-- ペンダント照明 -->
+    ${[60,150,250,350].map((x,i)=>`<line x1="${x}" y1="0" x2="${x}" y2="${18+i%2*6}" stroke="#ffe9b8" stroke-width="2"/>
+      <path d="M${x-14},${30+i%2*6} L${x+14},${30+i%2*6} L${x+9},${18+i%2*6} L${x-9},${18+i%2*6} Z" fill="#ffd27a"/>
+      <circle cx="${x}" cy="${34+i%2*6}" r="9" fill="#ffe49c"/>`).join("")}
+    <!-- 奥の棚＆ボトル -->
+    <rect x="14" y="40" width="120" height="4" fill="#e9d6b8"/>
+    ${[20,34,48,62,76,90,104,118].map(x=>`<rect x="${x}" y="26" width="7" height="14" rx="2" fill="#cde8e2"/>`).join("")}
+    <!-- カウンター -->
+    <rect x="0" y="92" width="430" height="28" fill="#caa06a"/>
+    <!-- スツール -->
+    ${[70,150,230,310,390].map(x=>`<rect x="${x-3}" y="104" width="6" height="16" fill="#9a7242"/><circle cx="${x}" cy="100" r="11" fill="#b98b52"/>`).join("")}
+  </g>
+</svg>`;
+function updateHeaderPhoto(){
+  const el=document.getElementById("hdrPhoto");if(!el)return;
+  if(DB.headerPhoto){el.style.backgroundImage="url('"+DB.headerPhoto+"')";el.innerHTML="";}
+  else{el.style.backgroundImage="";el.innerHTML=DEFAULT_RESTAURANT_SVG;}
+}
+function onPhotoFile(e){
+  const f=e.target.files&&e.target.files[0];if(!f)return;
+  if(f.type.indexOf("image/")!==0){alert("写真（JPG・PNG）を選んでください。");e.target.value="";return;}
+  const r=new FileReader();r.onload=()=>{DB.headerPhoto=r.result;save();render();refreshSettings();};r.readAsDataURL(f);
+  e.target.value="";
+}
+function removeHeaderPhoto(){DB.headerPhoto=null;save();render();refreshSettings();}
+
+/* ===== 印刷／PDF・CSV ===== */
+function printHead(title){
+  return `<div class="print-only print-head">
+    ${DB.logo?`<img src="${DB.logo}" alt="ロゴ">`:""}
+    <div><div style="font-weight:800;font-size:16px">${esc(title)}</div>
+    <div style="font-size:12px;color:#666">集計日：${todayStr()}</div></div></div>`;
+}
+function csvEsc(v){v=(v==null?"":""+v);return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
+function downloadCSV(name,rows){
+  const csv="﻿"+rows.map(r=>r.map(csvEsc).join(",")).join("\r\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function downloadSurveyCSV(){
+  const sv=activeSurvey();const rows=[];
+  rows.push(["シゴデキ店長アプリ ES集計",sv.title]);
+  rows.push(["集計日",todayStr(),"回答数",sv.responses.length]);rows.push([]);
+  const totals=sv.responses.map(r=>r.total).filter(v=>v);
+  rows.push(["総合満足度(%)",totals.length?Math.round(totals.filter(v=>v<=2).length/totals.length*100):0]);rows.push([]);
+  rows.push(["小分類スコア（平均）"]);rows.push(["大分類","小分類","スコア(%)"]);
+  subScores(sv).forEach(s=>rows.push([s.grp,s.name,s.score]));rows.push([]);
+  rows.push(["設問別スコア"]);rows.push(["大分類","小分類","設問","スコア(%)"]);
+  ["A","B"].forEach(g=>ES_TEMPLATE[g].subs.forEach(sub=>sub.qs.forEach((q,i)=>rows.push([ES_TEMPLATE[g].name,sub.name,q,qScore(sv,sub.key+"_"+i)]))));
+  rows.push([]);
+  rows.push(["所属（店舗）別 満足度","満足度(%)","回答数"]);
+  sv.attr.depts.forEach(d=>{const rs=sv.responses.filter(r=>r.attrs.dept===d);rows.push([d,rs.length?overallScore(rs):"",rs.length]);});
+  rows.push([]);
+  rows.push(["役職別 満足度","満足度(%)","回答数"]);
+  sv.attr.roles.forEach(d=>{const rs=sv.responses.filter(r=>r.attrs.role===d);rows.push([d,rs.length?overallScore(rs):"",rs.length]);});
+  downloadCSV("ES集計_"+todayStr()+".csv",rows);
+}
+function downloadTaskCSV(){
+  const rows=[["シゴデキ店長アプリ タスク達成度"],["集計日",todayStr()],[],["店舗","完了数","タスク数","達成率(%)"]];
+  STORES.forEach(s=>{const a=achievement(s);rows.push([s,a.done,a.total,a.pct]);});
+  downloadCSV("タスク達成度_"+todayStr()+".csv",rows);
+}
+function onLogoFile(e){
+  const f=e.target.files&&e.target.files[0]; if(!f)return;
+  if(f.type==="application/pdf"){ handleLogoPdf(f); }
+  else if(f.type.indexOf("image/")===0){
+    const r=new FileReader();
+    r.onload=()=>{DB.logo=r.result;save();render();refreshSettings();};
+    r.readAsDataURL(f);
+  }else{ alert("JPG・PNG・PDF のいずれかのファイルを選んでください。"); }
+  e.target.value="";
+}
+function removeLogo(){ if(!confirm("ロゴを削除しますか？"))return; DB.logo=null; save(); render(); refreshSettings(); }
+// PDFは1ページ目を画像に変換して取り込む（部品をネットから読み込みます）
+function handleLogoPdf(f){
+  loadPdfLib().then(()=>{
+    const r=new FileReader();
+    r.onload=()=>{
+      pdfjsLib.getDocument({data:r.result}).promise
+        .then(pdf=>pdf.getPage(1))
+        .then(page=>{
+          const vp=page.getViewport({scale:2});
+          const c=document.createElement("canvas");c.width=vp.width;c.height=vp.height;
+          return page.render({canvasContext:c.getContext("2d"),viewport:vp}).promise
+            .then(()=>{DB.logo=c.toDataURL("image/png");save();render();refreshSettings();});
+        })
+        .catch(()=>alert("PDFの読み込みに失敗しました。JPGかPNGの画像でお試しください。"));
+    };
+    r.readAsArrayBuffer(f);
+  }).catch(()=>alert("PDFを画像に変換する部品を読み込めませんでした（この処理だけインターネット接続が必要です）。JPGかPNGの画像をお使いください。"));
+}
+function loadPdfLib(){
+  return new Promise((res,rej)=>{
+    if(window.pdfjsLib)return res();
+    const s=document.createElement("script");
+    s.src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+    s.onload=()=>{try{pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";}catch(e){} res();};
+    s.onerror=rej;
+    document.head.appendChild(s);
+  });
+}
+
+/* ===== ホーム：店長への応援メッセージ（開くたびに変化） ===== */
+function dateLine(){const d=new Date();return d.getMonth()+1+"月"+d.getDate()+"日（"+wdJa[d.getDay()]+"）";}
+function timeGreeting(){const h=new Date().getHours();return h<11?"おはようございます":h<17?"おつかれさまです":"今日も一日おつかれさまです";}
+function pick(arr){return arr[Math.floor(Math.random()*arr.length)];}
+function buildManagerGreeting(store){
+  const a=achievement(store),arr=DB.stores[store];
+  const overdue=arr.filter(t=>dueState(t)==="over").length;
+  const remaining=a.total-a.done;
+  const title=timeGreeting()+"、"+store+"店長";
+  const status=a.total?("達成率"+a.pct+"%・残り"+remaining+"件"):"タスク未登録";
+  let pool;
+  if(a.total===0){
+    pool=["まずはタスクを登録するところから。"+store+"のやることを書き出すと、頭がスッと軽くなりますよ。"];
+  }else if(a.pct===100){
+    pool=[
+      "全タスク完了、パーフェクトです！"+store+"の段取り、さすがの一言。今日も気持ちよくスタートできますね。",
+      "今日のやること、すべて完了済み。頭が下がります。この積み重ねがお店の強さになります。",
+      "達成率100%！"+store+"店長のきっちりした仕事ぶり、本部もちゃんと見ています。いつもありがとうございます。"];
+  }else if(overdue>0){
+    pool=[
+      store+"店長、期限の過ぎたタスクが"+overdue+"件あります。ここでサッと片付けるのが“シゴデキ”の証。まず1件、いきましょう。",
+      "おっと、"+overdue+"件ほど期限オーバーが…。大丈夫、今日のうちに取り戻せます。気になる1件から一緒に。",
+      overdue+"件、後ろに残っています。溜める前に今ここで。"+store+"店長ならすぐ追いつけます。"];
+  }else if(a.pct>=80){
+    pool=[
+      "達成率"+a.pct+"%、絶好調です！残り"+remaining+"件、軽く取りに行きましょう。",
+      "このリズム、最高です。あと"+remaining+"件で満点。"+store+"店長のペースなら余裕ですね。",
+      a.pct+"%まで来ました。ゴールはすぐそこ。気を抜かず、でも肩の力は抜いて。"];
+  }else if(a.pct>=50){
+    pool=[
+      "折り返しを越えて"+a.pct+"%。残り"+remaining+"件、ひとつずつ確実に。"+store+"店長なら問題なし。",
+      "半分以上クリア。いいペースです。残り"+remaining+"件、午後の合間にサクッと。",
+      a.pct+"%、悪くないペースです。ここで一段ギアを上げると、後がグッと楽になりますよ。"];
+  }else{
+    pool=[
+      "今日はここから。まず1件こなすと、一気に流れが変わります。"+store+"店長なら大丈夫、一緒に進めましょう。",
+      "達成率"+a.pct+"%、スタートはこれから。最初の1件が肝心です。気負わず、まず手を動かしましょう。",
+      "残り"+remaining+"件。多く見えても、1件ずつなら必ず終わります。"+store+"店長のこと、信じています。"];
+  }
+  return {title,status,msg:pick(pool)};
+}
+
+/* ===== メニューアイコン（白の単色イラスト） ===== */
+const ICONS={
+  insta:`<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r="1.15" fill="#fff" stroke="none"/></svg>`,
+  task:`<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.4l1.8 1.8 3-3.2"/><path d="M3.5 12.9l1.8 1.8 3-3.2"/><line x1="12" y1="6" x2="20.5" y2="6"/><line x1="12" y1="12.5" x2="20.5" y2="12.5"/><line x1="4" y1="19" x2="20.5" y2="19"/></svg>`,
+  survey:`<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9.5 4h5v2.2a.8.8 0 0 1-.8.8h-3.4a.8.8 0 0 1-.8-.8z" fill="#fff" stroke="none"/><line x1="8.5" y1="11" x2="15.5" y2="11"/><line x1="8.5" y1="14.6" x2="13.5" y2="14.6"/></svg>`,
+  report:`<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4,4 4,20 20,20"/><polyline points="7,15 11,11 14,13 19,7"/><polyline points="15,7 19,7 19,11"/></svg>`
+};
+
+/* ===== ホーム ===== */
+function renderHome(){
+  let html="";
+  if(role==="manager"){
+    const g=buildManagerGreeting(curStore);
+    html+=`<div class="card"><div class="hello">${g.title}<small>${dateLine()}　${g.status}</small></div>
+      <p style="margin:11px 0 0;font-size:14.5px;line-height:1.7;color:var(--ink)">${esc(g.msg)}</p></div>`;
+  }else{
+    html+=`<div class="card"><div class="hello">本部のみなさん、おつかれさまです<small>${dateLine()}</small></div></div>`;
+  }
+  // 本部からのお知らせ（先に表示）
+  html+=`<div class="sec-h"><span class="dot"></span>本部からのお知らせ</div><div class="card">`;
+  html+= DB.notices.length? DB.notices.map(n=>`<div class="notice"><span class="nd">${n.date.slice(5)}</span><span>${esc(n.text)}</span></div>`).join("")
+       : `<div class="empty">お知らせはありません</div>`;
+  html+=`</div>`;
+  // 今日やること（店長）/ 3店サマリ（本部）
+  if(role==="manager"){
+    const due=DB.stores[curStore].filter(t=>{const s=dueState(t);return s==="over"||s==="soon";});
+    html+=`<div class="sec-h"><span class="dot"></span>今日やること</div><div class="card">`;
+    html+= due.length? due.map(taskRow).join("") : `<div class="empty">今日が期限のタスクはありません 👍</div>`;
+    html+=`</div>`;
+  }else{
+    html+=`<div class="sec-h"><span class="dot"></span>3店舗の今の状況</div><div class="card">`;
+    STORES.forEach(s=>{const a=achievement(s);html+=`<div class="store-row"><div class="sr-name">${s}</div>
+      <div class="sr-bar"><div class="bar"><i style="width:${a.pct}%"></i></div></div><div class="sr-pct">${a.pct}%</div></div>`;});
+    html+=`</div>`;
+  }
+  // 大きなボタン（メニュー）。本部は順番を変える
+  const B={
+    insta:`<button class="big-btn" onclick="go('insta')"><span class="ic">${ICONS.insta}</span><span><span class="bt">ワンタップ・インスタ</span><span class="bs">台本提案から投稿まで</span></span><span class="ar">›</span></button>`,
+    task:`<button class="big-btn" onclick="go('task')"><span class="ic">${ICONS.task}</span><span><span class="bt">タスク</span><span class="bs">やること・達成度の管理</span></span><span class="ar">›</span></button>`,
+    survey:`<button class="big-btn" onclick="go('survey')"><span class="ic">${ICONS.survey}</span><span><span class="bt">アンケート</span><span class="bs">ES調査の回答・集計</span></span><span class="ar">›</span></button>`,
+    report:`<button class="big-btn" onclick="go('report')"><span class="ic">${ICONS.report}</span><span><span class="bt">月次レポート</span><span class="bs">業績の振り返りと来月の作戦（PDCA）</span></span><span class="ar">›</span></button>`
+  };
+  const order = ["report","task","insta","survey"];
+  html+=`<div class="sec-h"><span class="dot"></span>メニュー</div><div class="big-btns">${order.map(k=>B[k]).join("")}</div>`;
+  html+=`<button class="btn-line" onclick="openSettings()">⚙ 設定（ロゴ・背景写真）</button>`;
+  return html;
+}
+
+/* ===== タスク ===== */
+function renderTask(){ return role==="hq"?renderTaskHQ():renderTaskManager(); }
+function renderTaskManager(){
+  const a=achievement(curStore),arr=DB.stores[curStore];
+  const remind=arr.filter(t=>{const s=dueState(t);return s==="over"||s==="soon";}).sort((x,y)=>daysBetween(todayStr(),nextDue(x))-daysBetween(todayStr(),nextDue(y)));
+  const cats=[...new Set(arr.map(t=>t.cat))];
+  let html=`<div class="card"><div class="ach-top"><span class="ach-label">${curStore}の達成度（今の周期）</span><span class="ach-count">${a.done} / ${a.total} 完了</span></div>
+    <div class="ach-pct">${a.pct}<span>%</span></div><div class="bar"><i style="width:${a.pct}%"></i></div></div>`;
+  html+=`<div class="sec-h"><span class="dot"></span>リマインド（期限が近い・過ぎたタスク）</div>`;
+  html+= remind.length? `<div class="card">`+remind.map(taskRow).join("")+`</div>` : `<div class="card"><div class="empty">期限が迫ったタスクはありません。順調です 👍</div></div>`;
+  html+=`<div class="sec-h"><span class="dot"></span>すべてのタスク（分野ごと）</div><div class="card">`;
+  cats.forEach(c=>{html+=`<div class="grp-title">▪ ${c}</div>`+arr.filter(t=>t.cat===c).map(taskRow).join("");});
+  html+=`</div>`;
+  html+=`<button class="btn-grad" onclick="openTaskForm()">＋ タスクを追加</button>`;
+  return html;
+}
+function taskRow(t){
+  const done=isDone(t),st=dueState(t);let pc="due-ok",pill=dueText(t);
+  if(done){pc="done-tag";pill="✓ 完了ずみ";}else if(st==="over")pc="due-over";else if(st==="soon")pc="due-soon";
+  return `<div class="task ${done?'done':''}"><button class="check ${done?'done':''}" onclick="onCheck('${t.id}')">✓</button>
+    <div class="t-body"><div class="t-name">${esc(t.name)}</div><div class="t-meta">
+      <span class="pill">${freqText(t)}</span><span class="pill ${pc}">${pill}</span>
+      ${t.scope==="all"?'<span class="pill scope-all">全店共通</span>':''}</div></div>
+    ${t.scope==="single"?`<button class="t-edit" onclick="openTaskForm('${t.id}','${curStore}')">✎</button>`:''}</div>`;
+}
+function renderTaskHQ(){
+  const data=STORES.map(s=>({s,...achievement(s)})),max=Math.max(...data.map(d=>d.pct)),min=Math.min(...data.map(d=>d.pct));
+  const top=data.filter(d=>d.pct===max).map(d=>d.s),low=data.filter(d=>d.pct===min).map(d=>d.s);
+  let html=printHead("3店舗 タスク達成度");
+  html+=`<div class="card"><div class="ach-top"><span class="ach-label">本部ダッシュボード｜3店舗の達成度くらべ</span></div>
+    <p class="lead" style="margin:6px 0 4px">どの店が進んでいて、どこが遅れているか一目で分かります。</p>`;
+  data.forEach(d=>{let tag="";if(d.pct===max&&d.pct!==min)tag=`<span class="rank-tag rank-top">トップ</span>`;else if(d.pct===min&&d.pct!==max)tag=`<span class="rank-tag rank-low">要フォロー</span>`;
+    html+=`<div class="store-row"><div class="sr-name">${d.s}</div><div class="sr-bar"><div class="bar"><i style="width:${d.pct}%"></i></div>
+      <div class="t-meta" style="margin-top:4px">${d.done}/${d.total} 完了 ${tag}</div></div><div class="sr-pct">${d.pct}%</div></div>`;});
+  html+=`</div>`;
+  html+=`<div class="card"><div class="ach-label" style="margin-bottom:6px">ひとこと講評</div>
+    <p style="margin:0;font-size:14px;">いま一番進んでいるのは <b>${top.join("・")}</b>、いちばん手当てが必要なのは <b>${low.join("・")}</b> です。${low.join("・")}の店長に「何か詰まっていないか」声をかけてみましょう。</p></div>`;
+  html+=`<div class="no-print"><button class="btn-grad" style="margin:0" onclick="window.print()">📄 PDFで保存・印刷する</button>
+    <button class="btn-line" onclick="downloadTaskCSV()">📊 データ（CSV）をダウンロード</button></div>`;
+  html+=`<div class="no-print"><div class="sec-h"><span class="dot"></span>本部からタスクを配る・管理する</div><div class="card">`;
+  const common=DB.stores["A店"].filter(t=>t.scope==="all");
+  html+=`<div class="grp-title">▪ 全店共通のタスク（${common.length}件）</div>`;
+  html+= common.length? common.map(t=>hqTaskRow(t,"A店","全店共通","scope-all")).join("") : `<div class="empty">まだありません</div>`;
+  STORES.forEach(s=>{const sg=DB.stores[s].filter(t=>t.scope==="single");if(sg.length){html+=`<div class="grp-title">▪ ${s} だけのタスク（${sg.length}件）</div>`+sg.map(t=>hqTaskRow(t,s,s,"scope-single")).join("");}});
+  html+=`</div><button class="btn-grad" onclick="openTaskForm()">＋ タスクを配る</button></div>`;
+  return html;
+}
+function hqTaskRow(t,store,badge,bc){
+  return `<div class="task"><div class="t-body"><div class="t-name">${esc(t.name)}</div><div class="t-meta">
+    <span class="pill">${esc(t.cat)}</span><span class="pill">${freqText(t)}</span><span class="pill ${bc}">${badge}</span></div></div>
+    <button class="t-edit" onclick="openTaskForm('${t.id}','${store}')">✎</button></div>`;
+}
+function onCheck(id){toggleDone(DB.stores[curStore].find(x=>x.id===id));render();}
+
+/* ----- タスクフォーム ----- */
+let tEditId=null,tEditStore=null,freqType="daily",scopeType="all";
+function fillMonthDays(){const s=document.getElementById("fMonthDay");if(s.options.length)return;for(let i=1;i<=31;i++){const o=document.createElement("option");o.value=i;o.textContent=i+"日";s.appendChild(o);}}
+function setFreq(f){freqType=f;document.querySelectorAll("#freqSeg button").forEach(b=>b.className=b.dataset.f===f?"on":"");
+  document.getElementById("subWeekly").style.display=f==="weekly"?"block":"none";
+  document.getElementById("subMonthlyDay").style.display=f==="monthlyDay"?"block":"none";
+  document.getElementById("subMonthlyNth").style.display=f==="monthlyNth"?"block":"none";
+  document.getElementById("subOnce").style.display=f==="once"?"block":"none";
+  const h={daily:"毎日くりかえすタスクです。",weekly:"指定した曜日に毎週くりかえします。",monthlyDay:"毎月の決まった日にくりかえします。",monthlyNth:"毎月の「第N週の◯曜日」にくりかえします。",once:"1回だけのタスクです。"};
+  document.getElementById("freqHint").textContent=h[f];}
+function setScope(s){scopeType=s;document.querySelectorAll("#scopeSeg button").forEach(b=>b.className=b.dataset.s===s?"on":"");document.getElementById("storeChecks").style.display=s==="single"?"flex":"none";}
+function openTaskForm(id,store){
+  fillMonthDays();tEditId=id||null;tEditStore=store||curStore;
+  const box=document.getElementById("scopeBox"),note=document.getElementById("scopeNote");
+  document.getElementById("tmTitle").textContent=id?"タスクを編集":(role==="hq"?"タスクを配る":"タスクを追加");
+  document.getElementById("tmDel").style.display=id?"block":"none";
+  if(id){const t=DB.stores[tEditStore].find(x=>x.id===id);
+    document.getElementById("fCategory").value=t.cat;document.getElementById("fName").value=t.name;setFreq(t.freq);
+    if(t.freq==="weekly")document.getElementById("fWeekday").value=t.weekday;
+    if(t.freq==="monthlyDay")document.getElementById("fMonthDay").value=t.day;
+    if(t.freq==="monthlyNth"){document.getElementById("fNth").value=t.nth;document.getElementById("fNthWeekday").value=t.nthWeekday;}
+    if(t.freq==="once")document.getElementById("fOnceDate").value=t.onceDate;
+    box.style.display="none";note.style.display="block";
+    note.textContent=t.scope==="all"?"このタスクは【全店共通】です。変更・削除すると3店舗すべてに反映されます。":"このタスクは【"+tEditStore+"】だけのタスクです。";
+  }else{document.getElementById("fCategory").value="衛生";document.getElementById("fName").value="";setFreq("daily");
+    document.getElementById("fOnceDate").value=todayStr();note.style.display="none";
+    if(role==="hq"){box.style.display="block";setScope("all");}else{box.style.display="none";scopeType="single";}}
+  openModal("taskModal");
+}
+function collectFields(){return{cat:document.getElementById("fCategory").value,name:document.getElementById("fName").value.trim(),freq:freqType,
+  weekday:Number(document.getElementById("fWeekday").value),day:Number(document.getElementById("fMonthDay").value),
+  nth:Number(document.getElementById("fNth").value),nthWeekday:Number(document.getElementById("fNthWeekday").value),onceDate:document.getElementById("fOnceDate").value};}
+function saveTask(){
+  const f=collectFields();if(!f.name){alert("タスク名を入れてください");return;}
+  if(tEditId){const t=DB.stores[tEditStore].find(x=>x.id===tEditId);
+    if(t.scope==="all")STORES.forEach(s=>DB.stores[s].forEach(x=>{if(x.groupId===t.groupId)Object.assign(x,f);}));else Object.assign(t,f);
+  }else if(role==="hq"&&scopeType==="all"){const gid="g"+Date.now();STORES.forEach(s=>DB.stores[s].push({id:s+"_"+gid,groupId:gid,scope:"all",...f,completions:[]}));
+  }else if(role==="hq"&&scopeType==="single"){const tg=[...document.querySelectorAll("#storeChecks button.on")].map(b=>b.dataset.store);
+    if(!tg.length){alert("配る店舗を選んでください");return;}tg.forEach(s=>{const gid="g"+Date.now()+s;DB.stores[s].push({id:gid,groupId:gid,scope:"single",...f,completions:[]});});
+  }else{const gid="g"+Date.now();DB.stores[curStore].push({id:gid,groupId:gid,scope:"single",...f,completions:[]});}
+  save();closeModal("taskModal");render();
+}
+function deleteTask(){const t=DB.stores[tEditStore].find(x=>x.id===tEditId);
+  if(t.scope==="all"){if(!confirm("【全店共通】のタスクです。3店舗すべてから削除します。よろしいですか？"))return;STORES.forEach(s=>{DB.stores[s]=DB.stores[s].filter(x=>x.groupId!==t.groupId);});}
+  else{if(!confirm("このタスクを削除します。よろしいですか？"))return;DB.stores[tEditStore]=DB.stores[tEditStore].filter(x=>x.id!==tEditId);}
+  save();closeModal("taskModal");render();}
+
+/* =====================================================================
+   インスタ（ワンタップ・インスタ）
+   ===================================================================== */
+function renderInsta(){ return role==="hq"?renderInstaHQ():renderInstaStore(); }
+const stStatus={draft:"下書き",pending:"本部の承認待ち",scheduled:"予約済み",posted:"投稿済み",rejected:"差し戻し"};
+function renderInstaStore(){
+  const set=DB.settings[curStore];const idx=set.lastScript%SCRIPTS.length;const s=SCRIPTS[idx];
+  let html=`<div class="script-card"><div class="lab">✨ AIが提案する今日の台本</div><h3>${esc(s.title)}</h3>
+    <ul>${s.points.map(p=>`<li>${esc(p)}</li>`).join("")}</ul>
+    <div class="thumb-idea">📌 サムネ案：「${esc(s.thumb)}」</div>
+    <button class="ai-btn" onclick="nextScript()">↻ 別の案を出す</button></div>`;
+  html+=`<button class="btn-grad" onclick="openPostFlow(${idx})">この台本で投稿を作る</button>`;
+  html+=`<p class="hint" style="text-align:center">※承認：${set.approval?"<b>ON</b>（本部の確認後に公開）":"OFF（そのまま公開）"}</p>`;
+  // 投稿一覧
+  html+=`<div class="sec-h"><span class="dot"></span>${curStore}の投稿</div><div class="card">`;
+  const posts=DB.posts[curStore];
+  html+= posts.length? posts.map(p=>postRow(p)).join("") : `<div class="empty">まだ投稿はありません</div>`;
+  html+=`</div>`;
+  return html;
+}
+function postRow(p,showActions){
+  return `<div class="task" style="align-items:center"><div class="post-thumb t-body"><span class="ph">🎬</span>
+    <div><div class="t-name">${esc(p.scriptTitle)}</div><div class="t-meta">
+      <span class="pill st-${p.status}">${stStatus[p.status]}</span>${p.when?`<span class="pill">${esc(p.when)}</span>`:""}</div></div></div>
+    ${showActions?`<div style="display:flex;flex-direction:column;gap:6px">
+      <button class="ai-btn" style="background:var(--green);border:none;color:#fff;margin:0" onclick="approvePost('${p.store}','${p.id}',true)">承認</button>
+      <button class="ai-btn" style="background:#fff;border:1.5px solid var(--red-bg);color:var(--red);margin:0" onclick="approvePost('${p.store}','${p.id}',false)">差し戻し</button></div>`:""}</div>`;
+}
+function renderInstaHQ(){
+  let html=`<div class="sec-h"><span class="dot"></span>承認待ちの投稿</div><div class="card">`;
+  const pend=[];STORES.forEach(s=>DB.posts[s].forEach(p=>{if(p.status==="pending")pend.push(p);}));
+  html+= pend.length? pend.map(p=>`<div class="grp-title">▪ ${p.store}</div>`+postRow(p,true)).join("") : `<div class="empty">承認待ちの投稿はありません</div>`;
+  html+=`</div>`;
+  html+=`<div class="sec-h"><span class="dot"></span>店舗ごとの承認設定</div><div class="card">`;
+  STORES.forEach(s=>{const on=DB.settings[s].approval;
+    html+=`<div class="toggle"><div><div class="t-name">${s}</div><div class="t-meta">${on?"投稿前に本部がチェック":"店舗がそのまま公開"}</div></div>
+      <button class="sw ${on?'on':''}" onclick="toggleApproval('${s}')"><i></i></button></div>`;});
+  html+=`</div>`;
+  html+=`<div class="sec-h"><span class="dot"></span>全店の投稿状況</div><div class="card">`;
+  let any=false;STORES.forEach(s=>{if(DB.posts[s].length){any=true;html+=`<div class="grp-title">▪ ${s}</div>`+DB.posts[s].map(p=>postRow(p)).join("");}});
+  if(!any)html+=`<div class="empty">まだ投稿はありません</div>`;
+  html+=`</div>`;
+  return html;
+}
+function nextScript(){DB.settings[curStore].lastScript=(DB.settings[curStore].lastScript+1)%SCRIPTS.length;save();render();}
+function toggleApproval(s){DB.settings[s].approval=!DB.settings[s].approval;save();render();}
+function approvePost(store,id,ok){const p=DB.posts[store].find(x=>x.id===id);
+  if(ok){p.status="scheduled";p.when=p.when&&p.when.indexOf("予約")>=0?p.when:"予約済み";}else{p.status="rejected";p.when="本部から差し戻し";}
+  save();render();}
+
+/* ----- 投稿作成フロー（モーダル） ----- */
+let flowStep,flowScriptIdx,flowHasVideo,flowCaption,flowThumb,flowWhen,flowSchedAt;
+function openPostFlow(idx){flowScriptIdx=idx;flowStep=1;flowHasVideo=false;flowCaption="";flowThumb=SCRIPTS[idx].thumb;flowWhen="即時";flowSchedAt="";renderFlow();openModal("genModal");}
+function renderFlow(){
+  const s=SCRIPTS[flowScriptIdx];let h=`<h2>投稿を作る（${flowStep}/4）</h2>`;
+  if(flowStep===1){
+    h+=`<div class="script-card" style="box-shadow:none;margin-bottom:12px"><div class="lab">台本</div><h3>${esc(s.title)}</h3><ul>${s.points.map(p=>`<li>${esc(p)}</li>`).join("")}</ul></div>`;
+    h+=`<label class="fld">① この台本でショート動画を撮ってください</label>`;
+    h+=`<div class="vidbox ${flowHasVideo?'has':''}" onclick="pickVideo()">${flowHasVideo?"✅ 動画を選びました（〇〇.mp4）":"📹 タップして撮影した動画を選ぶ"}</div>`;
+    h+=`<p class="hint">※試作のため、実際の動画は読み込みません。「選んだ」状態だけ進みます。</p>`;
+    h+=flowBtns(flowHasVideo);
+  }else if(flowStep===2){
+    h+=`<label class="fld">② AIが投稿文とサムネ文を作ります</label>`;
+    if(!flowCaption){h+=`<button class="btn-grad" onclick="genAI()">✨ AIにキャプションを作ってもらう</button>`;}
+    else{h+=`<label class="fld">投稿文（キャプション）</label><textarea id="flCap">${esc(flowCaption)}</textarea>
+      <label class="fld">サムネ用メッセージ（つかみ）</label><input type="text" id="flThumb" value="${esc(flowThumb)}">
+      <p class="hint">そのまま使ってもOK。気になるところは直せます。</p>`;}
+    h+=flowBtns(!!flowCaption);
+  }else if(flowStep===3){
+    h+=`<label class="fld">③ 公開のしかた</label><div class="seg" id="whenSeg">
+      <button class="${flowWhen==='即時'?'on':''}" onclick="setWhen('即時')">今すぐ公開</button>
+      <button class="${flowWhen==='予約'?'on':''}" onclick="setWhen('予約')">予約して公開</button></div>`;
+    if(flowWhen==="予約"){h+=`<div class="sub"><label class="fld">いつ公開する？</label><input type="datetime-local" id="flWhen" value="${flowSchedAt}"></div>`;}
+    h+=`<p class="hint">※実際の公開には Meta社の連携・審査が必要です（試作では一覧に記録されます）。連続投稿はスパム判定を避けるため間隔をあけます。</p>`;
+    h+=flowBtns(true);
+  }else{
+    const set=DB.settings[curStore];
+    h+=`<div class="ai-summary"><div class="lab">確認</div>
+      <b>${esc(s.title)}</b><br>サムネ：「${esc(flowThumb)}」<br>公開：${flowWhen==="予約"?("予約 "+(flowSchedAt?flowSchedAt.replace("T"," "):"")):"今すぐ"}<br>
+      承認：${set.approval?"本部の承認後に公開されます":"そのまま公開されます"}</div>`;
+    h+=`<button class="btn-grad" onclick="submitPost()">${set.approval?"本部に申請する":"公開する"}</button>`;
+    h+=`<button class="btn-line" onclick="flowStep=3;renderFlow()">← 戻る</button>`;
+  }
+  document.getElementById("genBody").innerHTML=h;
+}
+function flowBtns(canNext){return `<div class="m-actions">
+  <button class="btn-ghost" onclick="${flowStep===1?"closeModal('genModal')":"flowBack()"}">${flowStep===1?"やめる":"戻る"}</button>
+  <button class="btn-main" style="opacity:${canNext?1:.5}" onclick="${canNext?"flowNext()":""}">次へ</button></div>`;}
+function pickVideo(){flowHasVideo=true;renderFlow();}
+function genAI(){flowCaption=genCaption(SCRIPTS[flowScriptIdx]);renderFlow();}
+function setWhen(w){flowWhen=w;if(w==="予約"&&!flowSchedAt){const d=new Date();d.setDate(d.getDate()+1);d.setHours(11,0,0,0);flowSchedAt=fmt(d)+"T11:00";}renderFlow();}
+function flowNext(){
+  if(flowStep===2){const c=document.getElementById("flCap"),t=document.getElementById("flThumb");if(c)flowCaption=c.value;if(t)flowThumb=t.value;}
+  if(flowStep===3&&flowWhen==="予約"){const w=document.getElementById("flWhen");if(w)flowSchedAt=w.value;}
+  flowStep++;renderFlow();
+}
+function flowBack(){if(flowStep===2){const c=document.getElementById("flCap"),t=document.getElementById("flThumb");if(c)flowCaption=c.value;if(t)flowThumb=t.value;}flowStep--;renderFlow();}
+function submitPost(){
+  const set=DB.settings[curStore];const s=SCRIPTS[flowScriptIdx];
+  let status=set.approval?"pending":(flowWhen==="予約"?"scheduled":"posted");
+  let when=flowWhen==="予約"?("予約："+(flowSchedAt?flowSchedAt.replace("T"," "):"")):(status==="posted"?"今すぐ投稿":"公開予定");
+  if(set.approval)when=flowWhen==="予約"?("予約："+(flowSchedAt?flowSchedAt.replace("T"," "):"")):"承認後すぐ公開";
+  DB.posts[curStore].unshift({id:"p"+Date.now(),store:curStore,status,scriptTitle:s.title,caption:flowCaption||genCaption(s),thumbText:flowThumb,when,at:todayStr()});
+  DB.settings[curStore].lastScript=(flowScriptIdx+1)%SCRIPTS.length; // 次は別の台本
+  save();closeModal("genModal");
+  alert(set.approval?"本部に申請しました。承認されると公開されます。":(flowWhen==="予約"?"予約しました。":"公開しました（試作では一覧に記録）。"));
+  render();
+}
+
+/* =====================================================================
+   アンケート（ES調査）
+   ===================================================================== */
+function renderSurvey(){ return role==="hq"?renderSurveyHQ():renderSurveyRespondent(); }
+function activeSurvey(){return DB.surveys.find(s=>s.status==="active")||DB.surveys[0];}
+
+function renderSurveyRespondent(){
+  const sv=activeSurvey();
+  let html=`<div class="card"><div class="hello" style="font-size:16px">${esc(sv.title)}</div>
+    <p class="lead" style="margin:8px 0 0">${sv.status==="active"?"回答を受付中です。所要5〜7分。":"現在この調査は受付していません。"}</p></div>`;
+  if(sv.status==="active"){
+    html+=`<button class="btn-grad" onclick="startAnswer()">アンケートに回答する</button>`;
+    html+=`<p class="hint" style="text-align:center">回答は匿名で集計されます。個人は特定されません。</p>`;
+  }
+  html+=`<div class="card"><div class="ach-label">これまでの回答数</div><div class="ach-pct" style="font-size:36px">${sv.responses.length}<span>件</span></div></div>`;
+  return html;
+}
+let ansAttrs,ansData,ansGood,ansBad,ansTotal;
+function startAnswer(){
+  const sv=activeSurvey();ansAttrs={gender:"",age:"",tenure:"",role:"",dept:""};ansData={};ansGood="";ansBad="";ansTotal=0;
+  renderAnswer();openModal("genModal");
+}
+function renderAnswer(){
+  const sv=activeSurvey();const qs=allQ();
+  let h=`<h2>${esc(sv.title)}</h2><p class="hint">4段階でお答えください。最後に総合満足度と自由記述があります。</p>`;
+  // 属性
+  h+=`<div class="sec-h" style="margin-top:14px"><span class="dot"></span>あなたについて</div>`;
+  h+=attrSelect("性別",["男性","女性"],"gender");
+  h+=attrSelect("年齢",AGES,"age");
+  h+=attrSelect("勤続年数",TENURES,"tenure");
+  h+=attrSelect("役職",sv.attr.roles,"role");
+  h+=attrSelect("所属",sv.attr.depts,"dept");
+  // 設問
+  ["A","B"].forEach(g=>{
+    h+=`<div class="sec-h"><span class="dot"></span>${ES_TEMPLATE[g].name}</div>`;
+    ES_TEMPLATE[g].subs.forEach(sub=>{
+      h+=`<div class="card"><div class="grp-title">${sub.name}</div>`;
+      sub.qs.forEach((q,i)=>{const id=sub.key+"_"+i;const v=ansData[id];
+        h+=`<div class="q-block"><div class="q-text">${esc(q)}</div><div class="q-opts">
+          ${[["1","まさにそう思う"],["2","どちらかというとそう思う"],["3","どちらかというとそう思わない"],["4","まったくそう思わない"]].map(o=>
+            `<button class="${v==o[0]?'on':''}" onclick="setAns('${id}','${o[0]}')">${o[1]}</button>`).join("")}</div></div>`;});
+      h+=`</div>`;
+    });
+  });
+  // 総合
+  h+=`<div class="sec-h"><span class="dot"></span>総合満足度</div><div class="card"><div class="q-block">
+    <div class="q-text">総合的にみて、この会社で働けていることに満足している</div><div class="q-opts">
+    ${[["1","まさにそう思う"],["2","どちらかというとそう思う"],["3","どちらかというとそう思わない"],["4","まったくそう思わない"]].map(o=>
+      `<button class="${ansTotal==o[0]?'on':''}" onclick="setTotal('${o[0]}')">${o[1]}</button>`).join("")}</div></div></div>`;
+  // 自由記述
+  h+=`<div class="sec-h"><span class="dot"></span>自由記述（任意）</div><div class="card">
+    <label class="fld">困っていること・改善してほしいこと</label><textarea id="svBad">${esc(ansBad)}</textarea>
+    <label class="fld">最近うれしかったこと・良かったこと</label><textarea id="svGood">${esc(ansGood)}</textarea></div>`;
+  h+=`<div class="m-actions"><button class="btn-ghost" onclick="closeModal('genModal')">やめる</button>
+    <button class="btn-main" onclick="submitAnswer()">回答を送る</button></div>`;
+  document.getElementById("genBody").innerHTML=h;
+}
+function attrSelect(label,opts,key){
+  return `<label class="fld">${label}</label><div class="seg">${opts.map(o=>
+    `<button class="${ansAttrs[key]===o?'on':''}" onclick="setAttr('${key}','${esc(o)}')">${esc(o)}</button>`).join("")}</div>`;
+}
+function setAttr(k,v){ansAttrs[k]=v;syncFree();renderAnswer();}
+function setAns(id,v){ansData[id]=v;syncFree();renderAnswer();}
+function setTotal(v){ansTotal=v;syncFree();renderAnswer();}
+function syncFree(){const b=document.getElementById("svBad"),g=document.getElementById("svGood");if(b)ansBad=b.value;if(g)ansGood=g.value;}
+function submitAnswer(){
+  syncFree();const sv=activeSurvey();const qs=allQ();
+  const answered=qs.filter(q=>ansData[q.id]).length;
+  if(answered<qs.length||!ansTotal){if(!confirm("未回答の設問があります。このまま送りますか？"))return;}
+  const answers={};qs.forEach(q=>{if(ansData[q.id])answers[q.id]=Number(ansData[q.id]);});
+  sv.responses.push({attrs:{...ansAttrs},answers,total:Number(ansTotal)||0,freeGood:ansGood,freeBad:ansBad});
+  save();closeModal("genModal");alert("回答ありがとうございました！集計に反映されました。");render();
+}
+
+/* ----- 本部：アンケート結果 ----- */
+function renderSurveyHQ(){
+  const sv=activeSurvey();
+  let html=printHead(sv.title);
+  html+=`<div class="card"><div class="ach-top"><span class="ach-label">${esc(sv.title)}</span>
+    <span class="pill ${sv.status==='active'?'st-posted':'st-draft'}">${sv.status==="active"?"受付中":"停止中"}</span></div>
+    <p class="lead" style="margin:8px 0 0">回答 ${sv.responses.length}件を自動集計しています。</p></div>`;
+  if(sv.responses.length===0){html+=`<div class="card"><div class="empty">まだ回答がありません</div></div>`;return html+surveySettingsBtn();}
+  html+=`<div class="no-print"><button class="btn-grad" style="margin:0" onclick="window.print()">📄 PDFで保存・印刷する</button>
+    <button class="btn-line" onclick="downloadSurveyCSV()">📊 データ（CSV）をダウンロード</button></div>`;
+
+  // 総合満足度
+  const totals=sv.responses.map(r=>r.total).filter(v=>v);
+  const totalScore=totals.length?Math.round(totals.filter(v=>v<=2).length/totals.length*100):0;
+  html+=`<div class="card grandcard"><div class="ach-label">総合満足度</div><div class="gp">${totalScore}<span style="font-size:24px">%</span></div>
+    <div class="t-meta" style="justify-content:center">「満足」と答えた人の割合</div></div>`;
+
+  // AI要約
+  html+=`<div class="card"><div class="ai-summary"><div class="lab">🤖 AIによる要点まとめ</div>${aiSummary(sv,totalScore)}</div></div>`;
+
+  // 小分類スコア
+  const subs=subScores(sv);const avg=Math.round(subs.reduce((a,b)=>a+b.score,0)/subs.length);
+  html+=`<div class="sec-h"><span class="dot"></span>小分類ごとのスコア（平均${avg}%）</div><div class="card">`;
+  subs.forEach(s=>{const cls=s.score-avg>=10?"hi":s.score-avg<=-10?"lo":"";
+    html+=`<div class="sub-score"><div class="ss-name">${esc(s.name)}<div class="t-meta">${s.grp}</div></div>
+      <div class="ss-bar"><div class="bar"><i style="width:${s.score}%"></i></div></div><div class="ss-pct ${cls}">${s.score}%</div></div>`;});
+  html+=`</div>`;
+
+  // 所属別
+  html+=`<div class="sec-h"><span class="dot"></span>所属（店舗）別の満足度</div><div class="card">`+attrTable(sv,"dept")+`</div>`;
+
+  // 自由記述
+  const bads=sv.responses.map(r=>r.freeBad).filter(Boolean),goods=sv.responses.map(r=>r.freeGood).filter(Boolean);
+  html+=`<div class="sec-h"><span class="dot"></span>自由記述（生の声）</div><div class="card">
+    <div class="grp-title">改善してほしいこと（${bads.length}件）</div>${bads.length?bads.map(t=>`<div class="freetext">💬 ${esc(t)}</div>`).join(""):'<div class="empty">なし</div>'}
+    <div class="grp-title" style="margin-top:14px">うれしかったこと（${goods.length}件）</div>${goods.length?goods.map(t=>`<div class="freetext">😊 ${esc(t)}</div>`).join(""):'<div class="empty">なし</div>'}</div>`;
+
+  return html+surveySettingsBtn();
+}
+function surveySettingsBtn(){return `<button class="btn-line no-print" onclick="openSurveySettings()">⚙ 役職・所属の設定／受付の開始・停止</button>`;}
+// 小分類スコア（上位2つの割合の平均）
+function subScores(sv){
+  const out=[];["A","B"].forEach(g=>ES_TEMPLATE[g].subs.forEach(sub=>{
+    const ss=sub.qs.map((q,i)=>qScore(sv,sub.key+"_"+i)).filter(v=>v!==null);
+    out.push({name:sub.name,grp:ES_TEMPLATE[g].name,score:ss.length?Math.round(ss.reduce((a,b)=>a+b,0)/ss.length):0});
+  }));return out;
+}
+function qScore(sv,id){const a=sv.responses.map(r=>r.answers[id]).filter(v=>v);if(!a.length)return null;return Math.round(a.filter(v=>v<=2).length/a.length*100);}
+// 全設問の平均スコア（属性フィルタ可）
+function overallScore(responses){const qs=allQ();let sum=0,c=0;qs.forEach(q=>{const a=responses.map(r=>r.answers[q.id]).filter(v=>v);if(a.length){sum+=a.filter(v=>v<=2).length/a.length*100;c++;}});return c?Math.round(sum/c):0;}
+function attrTable(sv,key){
+  const groups=key==="dept"?sv.attr.depts:sv.attr.roles;
+  const all=overallScore(sv.responses);
+  let h=`<table class="attr"><tr><th class="name" style="text-align:left">${key==="dept"?"所属":"役職"}</th><th>回答数</th><th>満足度</th></tr>`;
+  groups.forEach(g=>{const rs=sv.responses.filter(r=>r.attrs[key]===g);if(!rs.length){h+=`<tr><td class="name">${esc(g)}</td><td>0</td><td class="muted">—</td></tr>`;return;}
+    const sc=overallScore(rs);const cls=sc-all>=10?"cell-hi":sc-all<=-10?"cell-lo":"";
+    h+=`<tr><td class="name">${esc(g)}</td><td>${rs.length}</td><td class="${cls}">${sc}%</td></tr>`;});
+  h+=`<tr><td class="name"><b>全体</b></td><td>${sv.responses.length}</td><td><b>${all}%</b></td></tr></table>`;
+  return h;
+}
+function aiSummary(sv,totalScore){
+  const subs=subScores(sv).slice().sort((a,b)=>b.score-a.score);
+  const hi=subs[0],lo=subs[subs.length-1];
+  const depts=sv.attr.depts.map(d=>({d,rs:sv.responses.filter(r=>r.attrs.dept===d)})).filter(x=>x.rs.length).map(x=>({d:x.d,sc:overallScore(x.rs)})).sort((a,b)=>b.sc-a.sc);
+  const dHi=depts[0],dLo=depts[depts.length-1];
+  let s=`総合満足度は<b>${totalScore}%</b>です。`;
+  s+=`最も高い項目は「<b>${esc(hi.name)}</b>」（${hi.score}%）、最も低いのは「<b>${esc(lo.name)}</b>」（${lo.score}%）でした。`;
+  if(dHi&&dLo&&dHi.d!==dLo.d) s+=`所属別では<b>${dHi.d}</b>（${dHi.sc}%）が高く、<b>${dLo.d}</b>（${dLo.sc}%）が低めです。まずは「${esc(lo.name)}」と${dLo.d}のフォローから着手するのがおすすめです。`;
+  return s;
+}
+/* ----- アンケート設定 ----- */
+function openSurveySettings(){
+  const sv=activeSurvey();
+  let h=`<h2>アンケートの設定</h2>
+   <label class="fld">受付の状態</label><div class="seg"><button class="${sv.status==='active'?'on':''}" onclick="setSvStatus('active')">受付中</button><button class="${sv.status!=='active'?'on':''}" onclick="setSvStatus('closed')">停止</button></div>
+   <label class="fld">役職（カンマ区切りで編集）</label><input type="text" id="svRoles" value="${esc(sv.attr.roles.join(","))}">
+   <label class="fld">所属（カンマ区切りで編集）</label><input type="text" id="svDepts" value="${esc(sv.attr.depts.join(","))}">
+   <p class="hint">ここを変えると、回答画面の選択肢と集計表の見出しが入れ替わります。</p>
+   <div class="m-actions"><button class="btn-ghost" onclick="closeModal('genModal')">やめる</button><button class="btn-main" onclick="saveSurveySettings()">保存</button></div>`;
+  document.getElementById("genBody").innerHTML=h;openModal("genModal");
+}
+function setSvStatus(s){activeSurvey().status=s;save();openSurveySettings();}
+function saveSurveySettings(){
+  const sv=activeSurvey();
+  const roles=document.getElementById("svRoles").value.split(",").map(x=>x.trim()).filter(Boolean);
+  const depts=document.getElementById("svDepts").value.split(",").map(x=>x.trim()).filter(Boolean);
+  if(roles.length)sv.attr.roles=roles;if(depts.length)sv.attr.depts=depts;
+  save();closeModal("genModal");render();
+}
+
+/* =====================================================================
+   月次レポート（STORE REPORT FORM / PDCA）
+   ===================================================================== */
+function monthKey(d){d=d||new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");}
+function monthLabelOf(mk){return Number(mk.split("-")[1])+"月";}
+function getForm(store,id){return (DB.reports.forms[store]||[]).find(f=>f.id===id);}
+const REP_LABEL={draft:"下書き",submitted:"承認待ち",approved:"承認済み",rejected:"差し戻し"};
+const REP_CLASS={draft:"st-draft",submitted:"st-pending",approved:"st-posted",rejected:"st-rejected"};
+
+function renderReport(){
+  if(repViewId) return renderReportView();
+  return role==="hq"?renderReportHQ():renderReportManager();
+}
+function renderReportManager(){
+  const store=curStore; const forms=DB.reports.forms[store]||(DB.reports.forms[store]=[]);
+  const mk=monthKey(); const cur=forms.find(f=>f.month===mk);
+  let html=`<div class="card"><div class="ach-label">${monthLabelOf(mk)}の月次レポート（${store}）</div>`;
+  if(!cur){
+    html+=`<p class="lead" style="margin:8px 0 12px">まだ作成していません。今月の振り返りと来月の作戦を立てましょう。</p>
+      <button class="btn-grad" style="margin:0" onclick="createReport()">＋ 今月のレポートを作成</button></div>`;
+  }else{
+    html+=`<div style="margin:8px 0"><span class="pill ${REP_CLASS[cur.status]}">${REP_LABEL[cur.status]}</span></div>`;
+    if(cur.status==="rejected"&&cur.rejectComment)html+=`<div class="scope-note" style="color:var(--red);border-color:var(--red-bg)">本部より差し戻し：${esc(cur.rejectComment)}</div>`;
+    html+=`</div>`;
+    if(cur.status==="draft"||cur.status==="rejected")html+=`<button class="btn-grad" onclick="openReportForm('${store}','${cur.id}')">レポートを入力・編集する</button>`;
+    else if(cur.status==="submitted")html+=`<button class="btn-line" onclick="viewReport('${store}','${cur.id}')">提出した内容を表示</button>`;
+    else if(cur.status==="approved")html+=`<button class="btn-grad" onclick="viewReport('${store}','${cur.id}')">承認済みレポートを表示・PDF</button>`;
+  }
+  const past=forms.filter(f=>f.month!==mk).sort((a,b)=>b.month.localeCompare(a.month));
+  html+=`<div class="sec-h"><span class="dot"></span>これまでのレポート</div><div class="card">`;
+  html+= past.length? past.map(f=>`<div class="task"><div class="t-body"><div class="t-name">${monthLabelOf(f.month)}のレポート</div>
+    <div class="t-meta"><span class="pill ${REP_CLASS[f.status]}">${REP_LABEL[f.status]}</span></div></div>
+    <button class="t-edit" onclick="viewReport('${store}','${f.id}')">表示</button></div>`).join("") : `<div class="empty">まだありません</div>`;
+  html+=`</div>`;
+  return html;
+}
+function createReport(){
+  const f={id:"r"+Date.now(),month:monthKey(),status:"draft",actuals:{},reviews:{},chance:"",threat:"",goals:{}};
+  DB.reports.forms[curStore].push(f);save();openReportForm(curStore,f.id);
+}
+function openReportForm(store,id){repStore=store;repId=id;renderReportForm();openModal("genModal");}
+function renderReportForm(){
+  const f=getForm(repStore,repId),bud=DB.reports.budgets[repStore];
+  let h=`<h2>${monthLabelOf(f.month)}の月次レポート（${repStore}）</h2><p class="hint">当月実績を入れると、予算比・前年比が自動で計算されます。</p>`;
+  h+=`<div class="sec-h"><span class="dot"></span>① 業績の確認</div>`;
+  PERF.forEach(p=>{const a=f.actuals[p.k];
+    h+=`<div class="card" style="margin-bottom:10px"><div class="t-name">${p.name} <span class="muted" style="font-weight:400;font-size:12px">（${p.unit}・${p.hi?"高いほど良い":"低いほど良い"}）</span></div>
+      <label class="fld">当月実績</label><input type="number" inputmode="decimal" id="ra_${p.k}" value="${a==null?"":a}" oninput="recalcReport()">
+      <div class="t-meta" style="margin-top:8px">予算 ${bud[p.k].budget}　/　前年 ${bud[p.k].prev}</div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <div style="flex:1;text-align:center;padding:9px;border-radius:10px;background:#f1f2fa" id="rb_${p.k}">予算比 —</div>
+        <div style="flex:1;text-align:center;padding:9px;border-radius:10px;background:#f1f2fa" id="rp_${p.k}">前年比 —</div></div></div>`;});
+  h+=`<div class="sec-h"><span class="dot"></span>② アクションの振り返り</div>`;
+  PERF.forEach(p=>{h+=`<div class="card" style="margin-bottom:10px"><div class="t-name">${p.name}</div>
+    <div class="q-text" id="rq_${p.k}" style="margin-top:6px;color:var(--muted)"></div>
+    <textarea id="rv_${p.k}">${esc(f.reviews[p.k]||"")}</textarea></div>`;});
+  h+=`<div class="sec-h"><span class="dot"></span>③ 次月のチャンス</div><div class="card"><textarea id="rep_chance" placeholder="次月、チャンスだと感じていることは？">${esc(f.chance||"")}</textarea></div>`;
+  h+=`<div class="sec-h"><span class="dot"></span>④ 次月の脅威</div><div class="card"><textarea id="rep_threat" placeholder="次月、脅威になると感じていることは？">${esc(f.threat||"")}</textarea></div>`;
+  h+=`<div class="sec-h"><span class="dot"></span>⑤ 次月の目標とアクションプラン</div>`;
+  GOALS.forEach(g=>{const gv=f.goals[g.k]||{};
+    h+=`<div class="card" style="margin-bottom:10px"><div class="t-name">${g.name}</div>
+      <label class="fld">次月の目標</label><input type="text" id="gt_${g.k}" value="${esc(gv.target||"")}">
+      <label class="fld">アクションプラン</label><textarea id="gp_${g.k}">${esc(gv.plan||"")}</textarea>
+      <button class="btn-line" style="margin-top:10px;border-color:#d6ccff;color:#7c3aed" onclick="suggestActions('${g.k}')">💡 アクション案をAIに提案してもらう</button>
+      <div id="ai_${g.k}"></div></div>`;});
+  h+=`<div class="m-actions"><button class="btn-ghost" onclick="saveReport(false)">下書き保存</button>
+    <button class="btn-main" onclick="saveReport(true)">本部へ提出する</button></div>`;
+  document.getElementById("genBody").innerHTML=h;recalcReport();
+}
+
+/* ----- AIアクション提案（次月の目標→着地見込み→差額→具体策） ----- */
+let suggCache={};
+function numFrom(s){return parseFloat(String(s==null?"":s).replace(/[^0-9.\-]/g,""));}
+function getLatestActual(store,field){
+  const fs=(DB.reports.forms[store]||[]).filter(f=>f.actuals&&f.actuals[field]!=null).sort((a,b)=>b.month.localeCompare(a.month));
+  if(fs.length)return {value:fs[0].actuals[field],month:monthLabelOf(fs[0].month)};
+  const bud=DB.reports.budgets[store][field];
+  if(bud)return {value:bud.prev,month:"前年"};
+  return {value:null,month:""};
+}
+// 今月の季節・学休・行事から、その時期の施策を返す（需要側の目標のみ）＋近隣メモ
+function timelyTips(k){
+  if(["sales","guests","unitPrice"].indexOf(k)<0)return [];
+  const m=new Date().getMonth()+1;
+  const out=(CAL[m]&&CAL[m].tips)?CAL[m].tips.slice():[];
+  const note=((DB.localNotes&&DB.localNotes[repStore])||"").trim();
+  if(note)out.push({t:"近隣の予定に合わせる【地域】",d:"近隣メモ「"+note+"」に合わせ、当日の仕込み増・SNS事前告知・人員配置を前倒しで準備する。",ev:"地域：店長が入力した近隣の予定・時事",kpi:"該当日の客数・売上を前年同曜日と比較して記録"});
+  return out;
+}
+// 今の時期・地域・時事のまとめボックス
+function timelyBox(k){
+  const m=new Date().getMonth()+1,c=CAL[m]||{label:"",note:""};
+  const note=((DB.localNotes&&DB.localNotes[repStore])||"").trim();
+  let h=`<div style="font-size:12px;background:#fff;border:1px dashed #b9d9ef;border-radius:10px;padding:8px 10px;margin-bottom:10px;color:#2a4a63;line-height:1.6">
+    <b>📅 今の時期・地域・時事をふまえて</b><br>
+    <b>${m}月：</b>${esc(c.label)}　${esc(c.note)}<br>`;
+  h+=NATIONAL_TOPICS.map(t=>"・<b>"+esc(t.t)+"</b>："+esc(t.d)).join("<br>");
+  h+=`<br>・<b>近隣メモ：</b>`+(note?esc(note):`<span class="muted">（未入力）設定＞近隣メモ に予定を入れると、その日に合わせた提案が出ます</span>`);
+  h+=`</div>`;return h;
+}
+function suggestActions(k){
+  const info=GOAL_INFO[k];
+  let base=null,trend="トレンド：過去の実績データがこの項目にはないため、下に見込み値を入力してください。";
+  if(info.metric){
+    const la=getLatestActual(repStore,info.metric),bud=DB.reports.budgets[repStore][info.metric];
+    base=la.value;
+    if(bud&&la.value!=null){const t=Math.round((la.value-bud.prev)/bud.prev*100);
+      trend="トレンド：前年 "+bud.prev+info.unit+" → 直近（"+la.month+"）"+la.value+info.unit+"（前年比"+(t>=0?"+":"")+t+"%）。何もしなければ着地はおよそ "+la.value+info.unit+" の見込み。";}
+  }
+  let past="";
+  const ap=(DB.reports.forms[repStore]||[]).filter(f=>f.status==="approved"&&f.reviews&&f.reviews[info.metric]).sort((a,b)=>b.month.localeCompare(a.month));
+  if(info.metric&&ap.length&&ap[0].reviews[info.metric])past="📌 前回の取り組み：「"+ap[0].reviews[info.metric]+"」";
+  const tips=info.tips.concat(timelyTips(k));
+  suggCache[k]=tips;
+  let h=`<div class="ai-summary" style="margin-top:10px"><div class="lab">🤖 AIアクション提案（下書き）</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">前提：うどん店／地域密着・ランチ＆近隣オフィス需要／東京・駅近を想定。${esc(trend)}</div>
+    <div style="font-size:12px;background:#fff;border:1px dashed #c9bdf2;border-radius:10px;padding:8px 10px;margin-bottom:10px;color:#5a4a9a;line-height:1.6"><b>🏛 制度・時流をふまえて：</b>${esc(info.macro)}</div>
+    ${timelyBox(k)}
+    <label class="fld" style="margin-top:0">何もしない場合の着地見込み（${info.unit}）</label>
+    <input type="number" inputmode="decimal" id="base_${k}" value="${base==null?"":base}" oninput="recalcGap('${k}')">
+    <div id="gap_${k}" style="font-size:13px;font-weight:700;background:#fff;border:1px solid #e4ddff;border-radius:10px;padding:9px 11px;margin:10px 0"></div>`;
+  h+=tips.map((tp,i)=>`<div style="background:#fff;border:1px solid #ece8fb;border-radius:12px;padding:11px;margin-bottom:8px">
+      <div style="font-weight:800;font-size:14px">${esc(tp.t)}</div>
+      <div style="font-size:13px;margin:4px 0;line-height:1.6">${esc(tp.d)}</div>
+      <div style="font-size:12px;color:#0284c7;margin:4px 0;line-height:1.5">📏 計測：${esc(tp.kpi)}</div>
+      <div style="font-size:11px;color:#7c3aed;background:#f5f3ff;border-radius:8px;padding:5px 8px;display:inline-block">📚 ${esc(tp.ev)}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;gap:8px">
+        <span id="eff_${k}_${i}" style="font-size:12px;color:var(--muted)">目安：—</span>
+        <button class="btn-line" style="width:auto;margin:0;padding:7px 12px;font-size:12px" onclick="insertPlanFromSugg('${k}',${i})">この案を反映</button>
+      </div></div>`).join("");
+  if(past)h+=`<div style="font-size:12px;color:var(--muted);margin-top:2px">${esc(past)}</div>`;
+  h+=`<div style="font-size:11px;color:var(--muted);margin-top:8px">※試作では代表的な業界知見をもとに自動生成しています。本格版では Claude が最新の他社事例・成功／失敗事例をネット検索し、店舗の実データを踏まえて提案します。提案は下書きです。店長ご自身の考えで自由に修正してください。</div></div>`;
+  document.getElementById("ai_"+k).innerHTML=h;recalcGap(k);
+}
+function recalcGap(k){
+  const info=GOAL_INFO[k];
+  const target=numFrom(document.getElementById("gt_"+k).value);
+  const baseEl=document.getElementById("base_"+k);if(!baseEl)return;
+  const base=numFrom(baseEl.value),gEl=document.getElementById("gap_"+k);
+  const n=(suggCache[k]||info.tips).length;
+  const effs=[];for(let i=0;i<n;i++){const e=document.getElementById("eff_"+k+"_"+i);if(e)effs.push(e);}
+  if(isNaN(target)||isNaN(base)){gEl.innerHTML="次月の目標値（上の入力欄）と着地見込みを数値で入れると、差額を自動計算します。";effs.forEach(e=>e.textContent="目安：—");return;}
+  const gap=target-base,absg=Math.round(Math.abs(gap)*10)/10,need=info.hi?gap>0:gap<0;
+  gEl.innerHTML=`目標 <b>${target}${info.unit}</b>　/　何もしない着地 <b>${base}${info.unit}</b>　→　`+
+    (need?`<b style="color:#f43f5e">あと ${absg}${info.unit} の${info.hi?"上乗せ":"改善"}が必要</b>`:`<b style="color:#2563eb">すでに目標到達（余裕 ${absg}${info.unit}）</b>`);
+  const fr=[0.4,0.35,0.25,0.2,0.15,0.15];
+  effs.forEach((e,i)=>{e.textContent=need?("目安効果：約 "+(Math.round(absg*(fr[i]||0.1)*10)/10)+info.unit):"目安効果：さらなる上積み";});
+}
+function insertPlanFromSugg(k,i){
+  const info=GOAL_INFO[k],tp=suggCache[k][i],ta=document.getElementById("gp_"+k);
+  const target=numFrom(document.getElementById("gt_"+k).value);
+  const baseEl=document.getElementById("base_"+k),base=baseEl?numFrom(baseEl.value):NaN;
+  let eff="";
+  if(!isNaN(target)&&!isNaN(base)){const fr=[0.4,0.35,0.25,0.2,0.15,0.15];eff="／目標効果：約"+(Math.round(Math.abs(target-base)*(fr[i]||0.1)*10)/10)+info.unit;}
+  const line="・"+tp.t+"："+tp.d+"【計測】"+tp.kpi+eff;
+  ta.value=ta.value.trim()?(ta.value.replace(/\s+$/,"")+"\n"+line):line;ta.focus();
+}
+function recalcReport(){
+  const bud=DB.reports.budgets[repStore];
+  PERF.forEach(p=>{
+    const el=document.getElementById("ra_"+p.k);if(!el)return;
+    const a=parseFloat(el.value),b=bud[p.k].budget,prev=bud[p.k].prev;
+    const rb=document.getElementById("rb_"+p.k),rp=document.getElementById("rp_"+p.k),rq=document.getElementById("rq_"+p.k);
+    if(isNaN(a)){rb.textContent="予算比 —";rb.className="";rb.style.background="#f1f2fa";rp.textContent="前年比 —";rq.textContent="（当月実績を入力してください）";return;}
+    const br=b?Math.round(a/b*100):0,pr=prev?Math.round(a/prev*100):0,ok=p.hi?a>=b:a<=b;
+    rb.textContent="予算比 "+br+"%";rb.style.background="";rb.className=ok?"rt-good":"rt-bad";
+    rp.textContent="前年比 "+pr+"%";
+    rq.textContent=ok?"達成！　どのようなアクションで成果をあげましたか？":"未達。　どのようなアクションを実践していれば成果をあげられましたか？";
+  });
+}
+function saveReport(submit){
+  const f=getForm(repStore,repId);
+  PERF.forEach(p=>{const v=document.getElementById("ra_"+p.k).value;f.actuals[p.k]=v===""?null:parseFloat(v);});
+  PERF.forEach(p=>f.reviews[p.k]=document.getElementById("rv_"+p.k).value);
+  f.chance=document.getElementById("rep_chance").value;f.threat=document.getElementById("rep_threat").value;
+  GOALS.forEach(g=>f.goals[g.k]={target:document.getElementById("gt_"+g.k).value,plan:document.getElementById("gp_"+g.k).value});
+  if(submit){
+    if(!PERF.some(p=>f.actuals[p.k]!=null)){alert("当月実績を入力してください。");return;}
+    f.status="submitted";f.submittedAt=todayStr();f.rejectComment="";
+  }else if(f.status==="rejected")f.status="draft";
+  save();closeModal("genModal");
+  alert(submit?"本部へ提出しました。承認をお待ちください。":"下書きを保存しました。");render();
+}
+function viewReport(store,id){repViewStore=store;repViewId=id;module="report";render();}
+function backReport(){repViewId=null;render();}
+function renderReportView(){
+  const store=repViewStore,f=getForm(store,repViewId),bud=DB.reports.budgets[store];
+  let html=printHead(monthLabelOf(f.month)+"の月次レポート（"+store+"）");
+  html+=`<div class="no-print" style="display:flex;gap:10px;margin-bottom:10px">
+    <button class="btn-line" style="margin:0" onclick="backReport()">← 戻る</button>
+    ${f.status==="approved"?`<button class="btn-grad" style="margin:0" onclick="window.print()">📄 PDFで保存・印刷</button>`:""}</div>`;
+  html+=`<div class="card"><div class="t-meta" style="margin-bottom:6px"><span class="pill ${REP_CLASS[f.status]}">${REP_LABEL[f.status]}</span></div>`;
+  if(f.status==="rejected"&&f.rejectComment)html+=`<div class="scope-note" style="color:var(--red);border-color:var(--red-bg)">本部より差し戻し：${esc(f.rejectComment)}</div>`;
+  // ① 業績
+  html+=`<div class="sec-h"><span class="dot"></span>① 業績の確認</div>`;
+  PERF.forEach(p=>{const a=f.actuals[p.k];if(a==null){html+=`<div class="sub-score"><div class="ss-name">${p.name}</div><div class="muted">未入力</div></div>`;return;}
+    const b=bud[p.k].budget,prev=bud[p.k].prev,br=b?Math.round(a/b*100):0,pr=prev?Math.round(a/prev*100):0,ok=p.hi?a>=b:a<=b;
+    html+=`<div class="sub-score"><div class="ss-name">${p.name}<div class="t-meta">実績 ${a}${p.unit}／予算 ${b}／前年 ${prev}　・　前年比${pr}%</div></div>
+      <div style="flex:0 0 auto;padding:6px 10px;border-radius:10px;font-weight:800" class="${ok?'rt-good':'rt-bad'}">予算比${br}%</div></div>`;});
+  html+=`</div>`;
+  // ② 振り返り
+  html+=`<div class="sec-h"><span class="dot"></span>② アクションの振り返り</div><div class="card">`;
+  PERF.forEach(p=>{const a=f.actuals[p.k];const ok=a!=null&&(p.hi?a>=bud[p.k].budget:a<=bud[p.k].budget);
+    html+=`<div class="q-block"><div class="t-name">${p.name}　<span class="pill ${ok?'rt-good':'rt-bad'}">${a==null?"未入力":ok?"達成":"未達"}</span></div>
+      <div class="freetext" style="border:none;padding-top:6px">${esc(f.reviews[p.k]||"（記入なし）")}</div></div>`;});
+  html+=`</div>`;
+  // ③④
+  html+=`<div class="sec-h"><span class="dot"></span>③ 次月のチャンス</div><div class="card"><div class="freetext" style="border:none">${esc(f.chance||"（記入なし）")}</div></div>`;
+  html+=`<div class="sec-h"><span class="dot"></span>④ 次月の脅威</div><div class="card"><div class="freetext" style="border:none">${esc(f.threat||"（記入なし）")}</div></div>`;
+  // ⑤
+  html+=`<div class="sec-h"><span class="dot"></span>⑤ 次月の目標・アクションプランと進捗</div><div class="card">`;
+  GOALS.forEach(g=>{html+=renderGoalProgress(f,g);});
+  html+=`</div>`;
+  return html;
+}
+// ⑤の目標ごとに：プラン＋進捗（実績記録に対する達成率）
+function renderGoalProgress(f,g){
+  const k=g.k,info=GOAL_INFO[k],gv=(f.goals&&f.goals[k])||{};
+  const recs=(f.progress&&f.progress[k])||[];
+  const tnum=numFrom(gv.target);
+  let statusHtml,barHtml="";
+  if(recs.length&&!isNaN(tnum)&&tnum!==0){
+    const latest=recs[recs.length-1].value;
+    let pc=info.hi?latest/tnum:tnum/latest;if(!isFinite(pc)||pc<0)pc=0;
+    const bar=Math.max(0,Math.min(100,Math.round(pc*100)));
+    const st=bar>=100?["達成","#2563eb"]:bar>=80?["順調","#10b981"]:["遅れ","#f43f5e"];
+    statusHtml=`<span class="pill" style="background:#eef0fb;color:${st[1]}">${st[0]} ${bar}%</span> <span class="muted" style="font-size:12px">最新 ${latest}${info.unit} / 目標 ${tnum}${info.unit}</span>`;
+    barHtml=`<div class="bar" style="margin:6px 0"><i style="width:${bar}%"></i></div>`;
+  }else{
+    statusHtml=`<span class="muted" style="font-size:12px">まだ記録がありません（下のボタンから実績を記録）</span>`;
+  }
+  const recList=recs.length?`<div style="margin-top:4px">`+recs.map(r=>`<div class="t-meta">・${r.date.slice(5)}　<b>${r.value}${info.unit}</b>${r.note?"（"+esc(r.note)+"）":""}</div>`).join("")+`</div>`:"";
+  return `<div class="q-block"><div class="t-name">${g.name}：${esc(gv.target||"—")}</div>
+    <div class="freetext" style="border:none;padding-top:4px;white-space:pre-wrap">${esc(gv.plan||"（記入なし）")}</div>
+    <div style="margin-top:8px;font-size:13px;font-weight:700">📊 進捗：${statusHtml}</div>${barHtml}${recList}
+    <button class="btn-line no-print" style="margin-top:8px;width:auto;padding:8px 12px;font-size:13px" onclick="logProgress('${k}')">＋ 実績を記録</button></div>`;
+}
+function logProgress(k){
+  const g=GOALS.find(x=>x.k===k),info=GOAL_INFO[k];
+  document.getElementById("genBody").innerHTML=`<h2>${g.name}の実績を記録</h2>
+    <p class="hint">計測した数値を記録すると、目標に対する進捗（％・バー）が出ます。週1回など定期的に記録すると結果が見える化されます。</p>
+    <label class="fld">計測値（${info.unit}）</label><input type="number" inputmode="decimal" id="pgVal">
+    <label class="fld">メモ（任意）</label><input type="text" id="pgNote" placeholder="例：限定28食完売・晴れ">
+    <div class="m-actions"><button class="btn-ghost" onclick="closeModal('genModal')">やめる</button>
+    <button class="btn-main" onclick="saveProgress('${k}')">記録する</button></div>`;
+  openModal("genModal");
+}
+function saveProgress(k){
+  const v=numFrom(document.getElementById("pgVal").value);
+  if(isNaN(v)){alert("計測値を数値で入れてください。");return;}
+  const note=document.getElementById("pgNote").value;
+  const f=getForm(repViewStore,repViewId);
+  if(!f.progress)f.progress={};if(!f.progress[k])f.progress[k]=[];
+  f.progress[k].push({date:todayStr(),value:v,note});
+  save();closeModal("genModal");render();
+}
+function renderReportHQ(){
+  let html=`<div class="sec-h"><span class="dot"></span>承認待ちのレポート</div><div class="card">`;
+  const pend=[];STORES.forEach(s=>(DB.reports.forms[s]||[]).forEach(f=>{if(f.status==="submitted")pend.push({s,f});}));
+  html+= pend.length? pend.map(({s,f})=>`<div class="task"><div class="t-body"><div class="t-name">${s}・${monthLabelOf(f.month)}のレポート</div>
+    <div class="t-meta"><span class="pill st-pending">承認待ち</span></div></div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <button class="ai-btn" style="background:var(--green);border:none;color:#fff;margin:0" onclick="approveReport('${s}','${f.id}')">承認</button>
+      <button class="ai-btn" style="background:#fff;border:1.5px solid var(--red-bg);color:var(--red);margin:0" onclick="rejectReport('${s}','${f.id}')">否認</button>
+      <button class="ai-btn" style="margin:0" onclick="viewReport('${s}','${f.id}')">内容を見る</button></div></div>`).join("") : `<div class="empty">承認待ちのレポートはありません</div>`;
+  html+=`</div>`;
+  html+=`<div class="sec-h"><span class="dot"></span>予算・前年実績の設定</div><div class="card">`;
+  STORES.forEach(s=>{html+=`<div class="toggle"><div><div class="t-name">${s}</div><div class="t-meta">売上予算 ${DB.reports.budgets[s].sales.budget}万円 ほか</div></div>
+    <button class="btn-line" style="width:auto;margin:0;padding:8px 14px;font-size:13px" onclick="openBudgetForm('${s}')">設定</button></div>`;});
+  html+=`</div>`;
+  html+=`<div class="sec-h"><span class="dot"></span>提出されたレポート</div><div class="card">`;
+  let any=false;STORES.forEach(s=>{const fs=(DB.reports.forms[s]||[]).filter(f=>f.status!=="draft").sort((a,b)=>b.month.localeCompare(a.month));
+    if(fs.length){any=true;html+=`<div class="grp-title">▪ ${s}</div>`+fs.map(f=>`<div class="task"><div class="t-body"><div class="t-name">${monthLabelOf(f.month)}のレポート</div>
+      <div class="t-meta"><span class="pill ${REP_CLASS[f.status]}">${REP_LABEL[f.status]}</span></div></div>
+      <button class="t-edit" onclick="viewReport('${s}','${f.id}')">表示</button></div>`).join("");}});
+  if(!any)html+=`<div class="empty">まだありません</div>`;
+  html+=`</div>`;
+  return html;
+}
+function approveReport(s,id){const f=getForm(s,id);f.status="approved";f.approvedAt=todayStr();f.rejectComment="";save();alert(s+"の"+monthLabelOf(f.month)+"レポートを承認しました。");render();}
+function rejectReport(s,id){const c=prompt("差し戻しのコメント（修正してほしい点など）","");if(c===null)return;const f=getForm(s,id);f.status="rejected";f.rejectComment=c||"修正をお願いします。";save();render();}
+function openBudgetForm(store){
+  const bud=DB.reports.budgets[store];
+  let h=`<h2>${store}の予算・前年実績</h2><p class="hint">ここで設定した値をもとに、店長の入力から予算比・前年比を自動計算します。</p>`;
+  PERF.forEach(p=>{h+=`<div class="card" style="margin-bottom:10px"><div class="t-name">${p.name}（${p.unit}）</div>
+    <label class="fld">予算</label><input type="number" inputmode="decimal" id="bb_${p.k}" value="${bud[p.k].budget}">
+    <label class="fld">前年実績</label><input type="number" inputmode="decimal" id="bp_${p.k}" value="${bud[p.k].prev}"></div>`;});
+  h+=`<div class="m-actions"><button class="btn-ghost" onclick="closeModal('genModal')">やめる</button><button class="btn-main" onclick="saveBudget('${store}')">保存</button></div>`;
+  document.getElementById("genBody").innerHTML=h;openModal("genModal");
+}
+function saveBudget(store){const bud=DB.reports.budgets[store];
+  PERF.forEach(p=>{bud[p.k].budget=parseFloat(document.getElementById("bb_"+p.k).value)||0;bud[p.k].prev=parseFloat(document.getElementById("bp_"+p.k).value)||0;});
+  save();closeModal("genModal");render();}
+
+/* =====================================================================
+   共通：モーダル開閉・起動
+   ===================================================================== */
+function openModal(id){document.getElementById(id).classList.add("on");}
+function closeModal(id){document.getElementById(id).classList.remove("on");}
+document.querySelectorAll("#freqSeg button").forEach(b=>b.onclick=()=>setFreq(b.dataset.f));
+document.querySelectorAll("#scopeSeg button").forEach(b=>b.onclick=()=>setScope(b.dataset.s));
+document.querySelectorAll("#storeChecks button").forEach(b=>b.onclick=()=>b.classList.toggle("on"));
+["taskModal","genModal"].forEach(id=>document.getElementById(id).addEventListener("click",e=>{if(e.target.id===id)closeModal(id);}));
+
+window.addEventListener("resize",sizeHeaderImages);
+load();render();
+</script>
+</body>
+</html>
