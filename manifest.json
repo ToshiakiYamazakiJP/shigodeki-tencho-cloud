@@ -1,0 +1,12 @@
+{
+  "name": "シゴデキ店長アプリ",
+  "short_name": "シゴデキ店長",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#6d5efc",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
