@@ -82,8 +82,8 @@
   .scope-note{font-size:13px;font-weight:700;color:var(--navy);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:14px 0 0;}
   .hint{font-size:12px;color:var(--muted);margin-top:6px;}
   nav.bottom{position:fixed;left:0;right:0;bottom:0;z-index:30;background:#fff;display:flex;box-shadow:0 -2px 16px rgba(80,70,200,.12);border-top:1px solid var(--line);max-width:var(--appw);margin:0 auto;}
-  nav.bottom button{flex:1;border:none;background:none;padding:9px 0 11px;color:var(--muted);font-size:11px;font-weight:700;}
-  nav.bottom button .ni{display:block;font-size:20px;margin-bottom:1px;opacity:.55;} nav.bottom button.on{color:var(--navy);} nav.bottom button.on .ni{opacity:1;}
+  nav.bottom button{flex:1;border:none;background:none;padding:9px 0 11px;color:var(--muted);font-size:10px;font-weight:700;}
+  nav.bottom button .ni{display:block;font-size:19px;margin-bottom:1px;opacity:.55;} nav.bottom button.on{color:var(--navy);} nav.bottom button.on .ni{opacity:1;}
   .script-card{background:var(--grad);color:#fff;border-radius:20px;padding:18px;margin-bottom:14px;box-shadow:0 10px 26px rgba(109,94,252,.35);}
   .script-card .lab{font-size:12px;font-weight:700;opacity:.9;}
   .script-card h3{font-size:20px;margin:8px 0 10px;font-weight:800;}
@@ -121,6 +121,22 @@
   .ox button{width:40px;height:36px;border:1.5px solid var(--line);border-radius:9px;background:#fafaff;font-size:17px;font-weight:800;color:#aab;}
   .ox button.o.on{background:var(--green-bg);border-color:var(--green);color:var(--green);}
   .ox button.x.on{background:var(--red-bg);border-color:var(--red);color:var(--red);}
+  .shift-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;}
+  .shift-grid .f{display:flex;flex-direction:column;}
+  .shift-grid label,.daycount label{font-size:12.5px;font-weight:700;color:var(--ink);margin:0 0 4px;}
+  .shift-grid .full{grid-column:1/-1;}
+  .daycount{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+  .daycount .f{display:flex;flex-direction:column;text-align:center;}
+  .daycount input{text-align:center;}
+  .out-row{display:flex;align-items:center;justify-content:space-between;padding:11px 4px;border-top:1px solid var(--line);font-size:14px;}
+  .out-row:first-child{border-top:none;}
+  .out-row .perday{font-weight:800;color:var(--navy);font-size:16px;}
+  .out-big{font-size:34px;font-weight:900;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1;}
+  table.sht{width:100%;border-collapse:collapse;font-size:13px;}
+  table.sht th,table.sht td{padding:8px 6px;text-align:center;border-bottom:1px solid var(--line);}
+  table.sht th{color:var(--muted);font-weight:700;font-size:12px;}
+  table.sht td.n{text-align:left;font-weight:700;}
+  table.sht td.hi{font-weight:800;color:var(--navy);}
   .print-only{display:none;}
   @media print{ .no-print{display:none!important;} header,nav.bottom{display:none!important;} body{background:#fff!important;padding:0!important;} main{max-width:100%!important;} .card{box-shadow:none!important;border:1px solid #ddd!important;break-inside:avoid;} .print-only{display:block!important;} *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;} }
   #loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:700;}
@@ -237,6 +253,16 @@ const QSC_ITEMS=[
    {id:"c5",t:"手洗い・衛生管理を徹底しているか"}]}
 ];
 function qscAllItems(){return QSC_ITEMS.reduce((a,g)=>a.concat(g.items),[]);}
+let SHIFTS=[], shiftForm=null, shiftMonth=null;
+const HOLIDAYS=new Set([
+ "2025-01-01","2025-01-13","2025-02-11","2025-02-23","2025-02-24","2025-03-20","2025-04-29","2025-05-03","2025-05-04","2025-05-05","2025-05-06","2025-07-21","2025-08-11","2025-09-15","2025-09-23","2025-10-13","2025-11-03","2025-11-23","2025-11-24",
+ "2026-01-01","2026-01-12","2026-02-11","2026-02-23","2026-03-20","2026-04-29","2026-05-03","2026-05-04","2026-05-05","2026-05-06","2026-07-20","2026-08-11","2026-09-21","2026-09-22","2026-09-23","2026-10-12","2026-11-03","2026-11-23",
+ "2027-01-01","2027-01-11","2027-02-11","2027-02-23","2027-03-21","2027-04-29","2027-05-03","2027-05-04","2027-05-05","2027-07-19","2027-08-11","2027-09-20","2027-09-23","2027-10-11","2027-11-03","2027-11-23"
+]);
+function countDaysOfMonth(ym){const[y,m]=ym.split("-").map(Number);const last=new Date(y,m,0).getDate();let wd=0,sat=0,sun=0,hol=0;
+  for(let d=1;d<=last;d++){const dt=new Date(y,m-1,d),w=dt.getDay(),key=ym+"-"+String(d).padStart(2,"0");
+    if(HOLIDAYS.has(key)){hol++;continue;} if(w===0)sun++;else if(w===6)sat++;else wd++;}
+  return {wd,sat,sun,hol};}
 const SCRIPTS=[
  {title:"行列のできる時間帯の店内",points:["開店前の仕込み","のれんを出す瞬間","席が埋まる早回し"],thumb:"行列必至の打ちたて"},
  {title:"打ちたて麺の湯気アップ",points:["製麺機から出る麺","茹で上げの湯気","しめる水しぶき"],thumb:"打ちたて、ここにしかない"},
@@ -345,6 +371,7 @@ async function loadData(){
   const {data:rep}=await sb.from("reports").select("*").order("month",{ascending:false});REPORTS=rep||[];
   const {data:ln}=await sb.from("local_notes").select("*");LOCALNOTES={};(ln||[]).forEach(r=>LOCALNOTES[r.store_id]=r.note);
   const {data:qsc}=await sb.from("qsc_checks").select("*").order("date");QSC=qsc||[];
+  const {data:sbg}=await sb.from("shift_budgets").select("*");SHIFTS=sbg||[];
 }
 
 /* ===== アプリ枠 ===== */
@@ -363,6 +390,7 @@ function renderApp(){
       <button data-m="qsc" onclick="go('qsc')"><span class="ni">📋</span>QSC</button>
       <button data-m="report" onclick="go('report')"><span class="ni">📈</span>レポート</button>
       <button data-m="survey" onclick="go('survey')"><span class="ni">📝</span>アンケート</button>
+      <button data-m="shift" onclick="go('shift')"><span class="ni">🗓</span>シフト</button>
     </nav>`;
   if(ME.role==="hq") $("vpick").onclick=openStorePicker;
   render();
@@ -379,6 +407,7 @@ function render(){
   else if(module==="survey")m.innerHTML=renderSurvey();
   else if(module==="report")m.innerHTML=renderReport();
   else if(module==="qsc")m.innerHTML=renderQSC();
+  else if(module==="shift")renderShift();
   else m.innerHTML=`<div class="card"><div class="empty">準備中</div></div>`;
 }
 
@@ -961,6 +990,82 @@ function renderQSCTrend(sid){
   h+=`<div class="sec-h"><span class="dot"></span>履歴（${hist.length}回）</div><div class="card">`;
   h+= hist.length? hist.slice().reverse().map(c=>`<div class="task"><div class="t-body"><div class="t-name">${c.date}</div></div><div class="sr-pct">${c.score}%</div></div>`).join("") : `<div class="empty">まだありません</div>`;
   h+=`</div>`;return h;
+}
+
+/* ===== 予算どおりのシフト人時配分 ===== */
+function fmt1(n){return (Math.round((Number(n)||0)*10)/10).toLocaleString();}
+function fy(n){return (Math.round(Number(n)||0)).toLocaleString();}
+function targetSid(){return ME.role==="manager"?ME.store_id:view.storeId;}
+function initShiftForm(sid,month){
+  const c=countDaysOfMonth(month),rec=SHIFTS.find(r=>r.store_id===sid&&r.month===month);
+  if(rec){shiftForm={...rec,_sid:sid,_month:month,d_weekday:rec.d_weekday??c.wd,d_sat:rec.d_sat??c.sat,d_sun:rec.d_sun??c.sun,d_holiday:rec.d_holiday??c.hol};
+    ["emp_salary","emp_hours","avg_wage","sales_budget","labor_ratio","sales_per_hour","ratio_sat","ratio_sun","ratio_holiday"].forEach(k=>shiftForm[k]=Number(shiftForm[k])||0);}
+  else shiftForm={_sid:sid,_month:month,emp_salary:0,emp_hours:0,avg_wage:1100,sales_budget:0,method:"cost_ratio",labor_ratio:25,sales_per_hour:5000,ratio_sat:1.5,ratio_sun:1.8,ratio_holiday:1.8,d_weekday:c.wd,d_sat:c.sat,d_sun:c.sun,d_holiday:c.hol};
+}
+function onShiftMonth(v){shiftMonth=v;shiftForm=null;renderShift();}
+function setShiftMethod(m){shiftForm.method=m;renderShift();}
+function onShiftIn(k,v){const num=["emp_salary","emp_hours","avg_wage","sales_budget","labor_ratio","sales_per_hour","ratio_sat","ratio_sun","ratio_holiday","d_weekday","d_sat","d_sun","d_holiday"];shiftForm[k]=num.indexOf(k)>=0?(v===""?0:parseFloat(v)):v;updateShiftOutput();}
+function renderShift(){
+  const sid=targetSid();
+  if(!sid){$("main").innerHTML=`<div class="card"><div class="empty">店舗を選んでください（右上の「本部 ▼」から店舗を選択）</div></div>`;return;}
+  if(!shiftMonth)shiftMonth=monthKey();
+  if(!shiftForm||shiftForm._sid!==sid||shiftForm._month!==shiftMonth)initShiftForm(sid,shiftMonth);
+  const f=shiftForm;
+  let h=`<div class="card"><div class="ach-label">予算どおりのシフト人時配分（${esc(storeName(sid))}）</div>
+    <label style="font-size:12.5px;font-weight:700;display:block;margin:10px 0 4px">対象の年月</label>
+    <input type="month" id="shMonth" value="${shiftMonth}" onchange="onShiftMonth(this.value)" style="max-width:210px"></div>`;
+  h+=`<div class="sec-h"><span class="dot"></span>① 基本情報</div><div class="card"><div class="shift-grid">
+    <div class="f"><label>社員給料（月・円）</label><input type="number" inputmode="numeric" value="${f.emp_salary}" oninput="onShiftIn('emp_salary',this.value)"></div>
+    <div class="f"><label>社員労働時間（想定・h）</label><input type="number" inputmode="decimal" value="${f.emp_hours}" oninput="onShiftIn('emp_hours',this.value)"></div>
+    <div class="f"><label>平均時給（円）</label><input type="number" inputmode="numeric" value="${f.avg_wage}" oninput="onShiftIn('avg_wage',this.value)"></div>
+    <div class="f"><label>売上予算（円）</label><input type="number" inputmode="numeric" value="${f.sales_budget}" oninput="onShiftIn('sales_budget',this.value)"></div>
+    <div class="f full"><label>計算方法</label><div class="seg"><button class="${f.method==='cost_ratio'?'on':''}" onclick="setShiftMethod('cost_ratio')">人件費率で</button><button class="${f.method==='sales_per_hour'?'on':''}" onclick="setShiftMethod('sales_per_hour')">人時売上高で</button></div></div>
+    ${f.method==='cost_ratio'
+      ?`<div class="f full"><label>人件費率 予算（％）</label><input type="number" inputmode="decimal" value="${f.labor_ratio}" oninput="onShiftIn('labor_ratio',this.value)"></div>`
+      :`<div class="f full"><label>人時売上高 予算（円／時）</label><input type="number" inputmode="numeric" value="${f.sales_per_hour}" oninput="onShiftIn('sales_per_hour',this.value)"></div>`}
+  </div></div>`;
+  h+=`<div class="sec-h"><span class="dot"></span>② 売上比率（平日＝1）</div><div class="card"><div class="shift-grid">
+    <div class="f"><label>土曜</label><input type="number" inputmode="decimal" step="0.1" value="${f.ratio_sat}" oninput="onShiftIn('ratio_sat',this.value)"></div>
+    <div class="f"><label>日曜</label><input type="number" inputmode="decimal" step="0.1" value="${f.ratio_sun}" oninput="onShiftIn('ratio_sun',this.value)"></div>
+    <div class="f"><label>祝日</label><input type="number" inputmode="decimal" step="0.1" value="${f.ratio_holiday}" oninput="onShiftIn('ratio_holiday',this.value)"></div>
+  </div></div>`;
+  h+=`<div class="sec-h"><span class="dot"></span>③ ${monthLabelOf(shiftMonth)}の日数（自動・修正可）</div><div class="card"><div class="daycount">
+    <div class="f"><label>平日</label><input type="number" value="${f.d_weekday}" oninput="onShiftIn('d_weekday',this.value)"></div>
+    <div class="f"><label>土曜</label><input type="number" value="${f.d_sat}" oninput="onShiftIn('d_sat',this.value)"></div>
+    <div class="f"><label>日曜</label><input type="number" value="${f.d_sun}" oninput="onShiftIn('d_sun',this.value)"></div>
+    <div class="f"><label>祝日</label><input type="number" value="${f.d_holiday}" oninput="onShiftIn('d_holiday',this.value)"></div>
+  </div><p class="hint">祝日は2025〜2027年を自動入力しています。違う場合は数字を直してください。</p></div>`;
+  h+=`<div id="shiftOut"></div><button class="btn-grad" onclick="saveShift()">保存する</button>`;
+  $("main").innerHTML=h;updateShiftOutput();
+}
+function updateShiftOutput(){
+  const f=shiftForm;let pa,bd;
+  if(f.method==="cost_ratio"){const tc=f.sales_budget*f.labor_ratio/100,pc=tc-f.emp_salary;pa=pc/(f.avg_wage||1);
+    bd=`総人件費予算 ${fy(tc)}円 − 社員人件費 ${fy(f.emp_salary)}円 ＝ PA人件費 ${fy(pc)}円 ÷ 平均時給 ${fy(f.avg_wage)}円`;}
+  else{const th=f.sales_budget/(f.sales_per_hour||1);pa=th-f.emp_hours;
+    bd=`総必要労働時間 ${fmt1(th)}時間 − 社員労働時間 ${fmt1(f.emp_hours)}時間`;}
+  if(!isFinite(pa))pa=0;
+  const wd=f.d_weekday||0,sat=f.d_sat||0,sun=f.d_sun||0,hol=f.d_holiday||0,total=wd+sat+sun+hol;
+  const units=wd+sat*f.ratio_sat+sun*f.ratio_sun+hol*f.ratio_holiday;
+  const per=r=>(units>0&&pa>0)?pa*r/units:0;
+  const pWd=per(1),pSat=per(f.ratio_sat),pSun=per(f.ratio_sun),pHol=per(f.ratio_holiday);
+  const row=(n,d,r,p)=>`<tr><td class="n">${n}</td><td>${d}日</td><td>${r}</td><td class="hi">${fmt1(p)}h</td><td>${fmt1(p*d)}h</td></tr>`;
+  let out=`<div class="card"><div class="ach-label">PAに使える月間労働時間</div><div class="out-big">${fmt1(Math.max(0,pa))}<span style="font-size:18px"> 時間</span></div>`;
+  if(pa<0)out+=`<div class="scope-note" style="color:var(--red);border-color:var(--red-bg)">社員の人件費（または労働時間）が予算を超えています。PAに回せる時間がありません。予算・給料・時給を見直してください。</div>`;
+  out+=`<div class="t-meta" style="margin-top:8px;line-height:1.7">${esc(bd)}</div></div>`;
+  out+=`<div class="sec-h"><span class="dot"></span>曜日タイプ別・1日あたりのPA労働時間</div><div class="card"><table class="sht">
+    <tr><th class="n" style="text-align:left">区分</th><th>日数</th><th>売上比率</th><th>1日あたり</th><th>月合計</th></tr>
+    ${row("平日",wd,"1.0",pWd)}${row("土曜",sat,f.ratio_sat,pSat)}${row("日曜",sun,f.ratio_sun,pSun)}${row("祝日",hol,f.ratio_holiday,pHol)}
+    <tr><td class="n"><b>合計</b></td><td><b>${total}日</b></td><td>—</td><td>—</td><td><b>${fmt1(Math.max(0,pa))}h</b></td></tr>
+  </table><p class="hint">「1日あたり」を、その曜日のシフト合計時間の目安にしてください。売上比率の高い日ほど多く配分されます。</p></div>`;
+  $("shiftOut").innerHTML=out;
+}
+async function saveShift(){
+  const f=shiftForm;
+  const rec={store_id:f._sid,month:f._month,emp_salary:f.emp_salary,emp_hours:f.emp_hours,avg_wage:f.avg_wage,sales_budget:f.sales_budget,method:f.method,labor_ratio:f.labor_ratio,sales_per_hour:f.sales_per_hour,ratio_sat:f.ratio_sat,ratio_sun:f.ratio_sun,ratio_holiday:f.ratio_holiday,d_weekday:f.d_weekday,d_sat:f.d_sat,d_sun:f.d_sun,d_holiday:f.d_holiday};
+  const {error}=await sb.from("shift_budgets").upsert(rec,{onConflict:"store_id,month"});
+  if(error){alert("保存に失敗しました："+error.message);return;}
+  await loadData();alert("保存しました。");
 }
 
 $("modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal();});
