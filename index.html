@@ -388,9 +388,9 @@ function renderApp(){
       <button data-m="task" onclick="go('task')"><span class="ni">✅</span>タスク</button>
       <button data-m="insta" onclick="go('insta')"><span class="ni">🎬</span>インスタ</button>
       <button data-m="qsc" onclick="go('qsc')"><span class="ni">📋</span>QSC</button>
-      <button data-m="report" onclick="go('report')"><span class="ni">📈</span>レポート</button>
-      <button data-m="survey" onclick="go('survey')"><span class="ni">📝</span>アンケート</button>
       <button data-m="shift" onclick="go('shift')"><span class="ni">🗓</span>シフト</button>
+      <button data-m="report" onclick="go('report')"><span class="ni">📈</span>月次戦略</button>
+      <button data-m="survey" onclick="go('survey')"><span class="ni">📝</span>アンケート</button>
     </nav>`;
   if(ME.role==="hq") $("vpick").onclick=openStorePicker;
   render();
@@ -1015,10 +1015,10 @@ function renderShift(){
     <label style="font-size:12.5px;font-weight:700;display:block;margin:10px 0 4px">対象の年月</label>
     <input type="month" id="shMonth" value="${shiftMonth}" onchange="onShiftMonth(this.value)" style="max-width:210px"></div>`;
   h+=`<div class="sec-h"><span class="dot"></span>① 基本情報</div><div class="card"><div class="shift-grid">
-    <div class="f"><label>社員給料（月・円）</label><input type="number" inputmode="numeric" value="${f.emp_salary}" oninput="onShiftIn('emp_salary',this.value)"></div>
-    <div class="f"><label>社員労働時間（想定・h）</label><input type="number" inputmode="decimal" value="${f.emp_hours}" oninput="onShiftIn('emp_hours',this.value)"></div>
-    <div class="f"><label>平均時給（円）</label><input type="number" inputmode="numeric" value="${f.avg_wage}" oninput="onShiftIn('avg_wage',this.value)"></div>
-    <div class="f"><label>売上予算（円）</label><input type="number" inputmode="numeric" value="${f.sales_budget}" oninput="onShiftIn('sales_budget',this.value)"></div>
+    <div class="f"><label>社員給与合計（月・円）</label><input type="number" inputmode="numeric" value="${f.emp_salary}" oninput="onShiftIn('emp_salary',this.value)"></div>
+    <div class="f"><label>社員労働時間合計（想定・h）</label><input type="number" inputmode="decimal" value="${f.emp_hours}" oninput="onShiftIn('emp_hours',this.value)"></div>
+    <div class="f"><label>PA平均時給（円）</label><input type="number" inputmode="numeric" value="${f.avg_wage}" oninput="onShiftIn('avg_wage',this.value)"></div>
+    <div class="f full"><label>売上予算（円）</label><input type="number" inputmode="numeric" value="${f.sales_budget}" oninput="onShiftIn('sales_budget',this.value)"></div>
     <div class="f full"><label>計算方法</label><div class="seg"><button class="${f.method==='cost_ratio'?'on':''}" onclick="setShiftMethod('cost_ratio')">人件費率で</button><button class="${f.method==='sales_per_hour'?'on':''}" onclick="setShiftMethod('sales_per_hour')">人時売上高で</button></div></div>
     ${f.method==='cost_ratio'
       ?`<div class="f full"><label>人件費率 予算（％）</label><input type="number" inputmode="decimal" value="${f.labor_ratio}" oninput="onShiftIn('labor_ratio',this.value)"></div>`
