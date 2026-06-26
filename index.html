@@ -1109,7 +1109,7 @@ function fileRow(f,showPath){const sel=fileSel.has(f.id);
     <span class="ic">${fileIconByName(f.name,f.mime)}</span>
     <span class="nm">${esc(f.name)}<div class="meta">${f.uploader?esc(f.uploader)+"・":""}${fmtSize(f.size)}${showPath?"・"+esc(folderPathStr(f.folder_id)):""}</div></span>
     <button class="t-edit" onclick="downloadFile('${f.id}')">⬇</button></div>`;}
-function selBar(){if(!fileSel.size)return "";return `<div class="fm-actions"><button class="btn-line" style="margin:0;flex:1" onclick="downloadSelected()">⬇ ${fileSel.size}件</button><button class="btn-line" style="margin:0;flex:1" onclick="openMove()">↪ 移動</button><button class="btn-line" style="margin:0;flex:1;color:var(--red);border-color:var(--red-bg)" onclick="deleteSelected()">🗑 削除</button></div>`;}
+function selBar(){if(!fileSel.size)return "";return `<div class="fm-actions"><button class="btn-line" style="margin:0;flex:1" onclick="downloadSelected()">ダウンロードする</button><button class="btn-line" style="margin:0;flex:1" onclick="openMove()">移動する</button><button class="btn-line" style="margin:0;flex:1;color:var(--red);border-color:var(--red-bg)" onclick="deleteSelected()">削除する</button></div>`;}
 function renderFilesScreen(){
   $("main").innerHTML=`<div class="fm-bar">
     <button class="btn-grad" style="margin:0;padding:11px 16px" onclick="openAddFile()">＋ ファイルを追加</button>
