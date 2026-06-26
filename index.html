@@ -137,6 +137,19 @@
   table.sht th{color:var(--muted);font-weight:700;font-size:12px;}
   table.sht td.n{text-align:left;font-weight:700;}
   table.sht td.hi{font-weight:800;color:var(--navy);}
+  .fm-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+  .crumb{font-size:13px;color:var(--muted);margin-bottom:10px;line-height:1.8;}
+  .crumb a{color:var(--navy);font-weight:700;cursor:pointer;}
+  .frow{display:flex;align-items:center;gap:10px;padding:11px 4px;border-top:1px solid var(--line);}
+  .frow:first-child{border-top:none;}
+  .frow .ic{font-size:20px;flex:0 0 auto;}
+  .frow .nm{flex:1;min-width:0;font-weight:600;font-size:14px;overflow:hidden;}
+  .frow .nm .meta{font-size:11px;color:var(--muted);font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .frow .chk{width:18px;height:18px;flex:0 0 auto;}
+  .fm-actions{position:sticky;bottom:8px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px;display:flex;gap:8px;box-shadow:0 8px 20px rgba(80,70,200,.18);margin-top:12px;}
+  .fm-actions button{font-size:13px;padding:11px 6px;}
+  .dropzone{border:2px dashed var(--line);border-radius:12px;padding:22px;text-align:center;color:var(--muted);background:#fafaff;font-size:13px;}
+  .dropzone.over{border-color:#8b5cf6;background:#f5f3ff;}
   .print-only{display:none;}
   @media print{ .no-print{display:none!important;} header,nav.bottom{display:none!important;} body{background:#fff!important;padding:0!important;} main{max-width:100%!important;} .card{box-shadow:none!important;border:1px solid #ddd!important;break-inside:avoid;} .print-only{display:block!important;} *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;} }
   #loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:700;}
@@ -254,6 +267,7 @@ const QSC_ITEMS=[
 ];
 function qscAllItems(){return QSC_ITEMS.reduce((a,g)=>a.concat(g.items),[]);}
 let SHIFTS=[], shiftForm=null, shiftMonth=null;
+let FOLDERS=[], FILES=[], fileCwd=null, fileSearch="", fileSel=new Set(), fmPending=[], fmUploader="", fmFolder="";
 const HOLIDAYS=new Set([
  "2025-01-01","2025-01-13","2025-02-11","2025-02-23","2025-02-24","2025-03-20","2025-04-29","2025-05-03","2025-05-04","2025-05-05","2025-05-06","2025-07-21","2025-08-11","2025-09-15","2025-09-23","2025-10-13","2025-11-03","2025-11-23","2025-11-24",
  "2026-01-01","2026-01-12","2026-02-11","2026-02-23","2026-03-20","2026-04-29","2026-05-03","2026-05-04","2026-05-05","2026-05-06","2026-07-20","2026-08-11","2026-09-21","2026-09-22","2026-09-23","2026-10-12","2026-11-03","2026-11-23",
@@ -372,6 +386,8 @@ async function loadData(){
   const {data:ln}=await sb.from("local_notes").select("*");LOCALNOTES={};(ln||[]).forEach(r=>LOCALNOTES[r.store_id]=r.note);
   const {data:qsc}=await sb.from("qsc_checks").select("*").order("date");QSC=qsc||[];
   const {data:sbg}=await sb.from("shift_budgets").select("*");SHIFTS=sbg||[];
+  const {data:fld}=await sb.from("folders").select("*").order("sort").order("name");FOLDERS=fld||[];
+  const {data:fil}=await sb.from("files").select("*").order("created_at",{ascending:false});FILES=fil||[];
 }
 
 /* ===== アプリ枠 ===== */
@@ -408,6 +424,7 @@ function render(){
   else if(module==="report")m.innerHTML=renderReport();
   else if(module==="qsc")m.innerHTML=renderQSC();
   else if(module==="shift")renderShift();
+  else if(module==="files")renderFilesScreen();
   else m.innerHTML=`<div class="card"><div class="empty">準備中</div></div>`;
 }
 
@@ -432,6 +449,7 @@ function pickView(mode,id){view={mode,storeId:mode==="hq"?view.storeId:id};qscVi
 function renderHome(){
   let h=`<div class="card"><div class="hello">${ME.role==="hq"&&view.mode==="hq"?"本部のみなさん、おつかれさまです":esc(storeName(view.mode==="hq"?ME.store_id:view.storeId))+" おつかれさまです"}
     <small>${new Date().getMonth()+1}月${new Date().getDate()}日（${wdJa[new Date().getDay()]}）</small></div></div>`;
+  h+=`<button class="btn-grad" style="margin-bottom:14px" onclick="openFiles()">📁 ファイル管理を開く</button>`;
   h+=`<div class="sec-h"><span class="dot"></span>本部からのお知らせ</div><div class="card">`;
   h+= NOTICES.length? NOTICES.map(n=>`<div class="notice"><span class="nd">${(n.date||"").slice(5)}</span><span>${esc(n.text)}</span></div>`).join("") : `<div class="empty">お知らせはありません</div>`;
   h+=`</div>`;
@@ -1067,6 +1085,143 @@ async function saveShift(){
   if(error){alert("保存に失敗しました："+error.message);return;}
   await loadData();alert("保存しました。");
 }
+
+/* ===== ファイル管理 ===== */
+function openFiles(){module="files";fileCwd=null;fileSearch="";fileSel.clear();render();}
+function fileIconByName(name,mime){const ext=(name.split(".").pop()||"").toLowerCase();
+  if(["xls","xlsx","csv"].indexOf(ext)>=0)return "📊";if(["doc","docx"].indexOf(ext)>=0)return "📝";
+  if(["ppt","pptx"].indexOf(ext)>=0)return "📈";if(ext==="pdf")return "📕";
+  if(["png","jpg","jpeg","gif","webp","heic","svg","bmp"].indexOf(ext)>=0||(mime||"").indexOf("image/")===0)return "🖼";return "📄";}
+function fmtSize(b){if(!b)return "";const u=["B","KB","MB","GB"];let i=0,n=b;while(n>=1024&&i<3){n/=1024;i++;}return (Math.round(n*10)/10)+u[i];}
+function childFolders(pid){return FOLDERS.filter(f=>(f.parent_id||null)===(pid||null));}
+function folderFiles(fid){return FILES.filter(f=>(f.folder_id||null)===(fid||null));}
+function folderPath(id){const out=[];let cur=id;while(cur){const f=FOLDERS.find(x=>x.id===cur);if(!f)break;out.unshift({id:f.id,name:f.name});cur=f.parent_id;}return out;}
+function folderPathStr(id){return id?folderPath(id).map(p=>p.name).join(" / "):"ルート";}
+function descendantFolderIds(id){const res=[],st=[id];while(st.length){const p=st.pop();childFolders(p).forEach(c=>{res.push(c.id);st.push(c.id);});}return res;}
+function folderOptions(excludeId){const ex=excludeId?new Set([excludeId].concat(descendantFolderIds(excludeId))):new Set();let o=`<option value="">（ルート）</option>`;
+  (function walk(pid,d){childFolders(pid).forEach(f=>{if(ex.has(f.id))return;o+=`<option value="${f.id}">${"　".repeat(d)}${esc(f.name)}</option>`;walk(f.id,d+1);});})(null,0);return o;}
+function fileRow(f,showPath){const sel=fileSel.has(f.id);
+  return `<div class="frow"><input type="checkbox" class="chk" ${sel?"checked":""} onclick="toggleSel('${f.id}')">
+    <span class="ic">${fileIconByName(f.name,f.mime)}</span>
+    <span class="nm">${esc(f.name)}<div class="meta">${f.uploader?esc(f.uploader)+"・":""}${fmtSize(f.size)}${showPath?"・"+esc(folderPathStr(f.folder_id)):""}</div></span>
+    <button class="t-edit" onclick="downloadFile('${f.id}')">⬇</button></div>`;}
+function selBar(){if(!fileSel.size)return "";return `<div class="fm-actions"><button class="btn-line" style="margin:0;flex:1" onclick="downloadSelected()">⬇ ${fileSel.size}件</button><button class="btn-line" style="margin:0;flex:1" onclick="openMove()">↪ 移動</button><button class="btn-line" style="margin:0;flex:1;color:var(--red);border-color:var(--red-bg)" onclick="deleteSelected()">🗑 削除</button></div>`;}
+function renderFilesScreen(){
+  $("main").innerHTML=`<div class="fm-bar">
+    <button class="btn-grad" style="margin:0;padding:11px 16px" onclick="openAddFile()">＋ ファイルを追加</button>
+    <button class="btn-line" style="margin:0;width:auto;padding:11px 16px" onclick="openAddFolder()">＋ フォルダを追加</button></div>
+    <input type="text" id="fmSearch" placeholder="🔍 ファイル名で検索（全フォルダから）" value="${esc(fileSearch)}" oninput="onFileSearch(this.value)" style="margin-bottom:12px">
+    <div id="fmBody"></div>`;
+  renderFmBody();
+}
+function onFileSearch(v){fileSearch=v;renderFmBody();}
+function renderFmBody(){
+  let h="";
+  if(fileSearch.trim()){
+    const q=fileSearch.trim(),res=FILES.filter(f=>f.name.indexOf(q)>=0);
+    h+=`<div class="sec-h"><span class="dot"></span>検索結果（${res.length}件）</div><div class="card">`;
+    h+= res.length? res.map(f=>fileRow(f,true)).join("") : `<div class="empty">「${esc(q)}」に一致するファイルがありません</div>`;
+    h+=`</div>`;
+  }else{
+    const path=folderPath(fileCwd);
+    let crumb=`<div class="crumb"><a onclick="fileGo(null)">📁 ファイル管理（ルート）</a>`;
+    path.forEach(p=>crumb+=` ▸ <a onclick="fileGo('${p.id}')">${esc(p.name)}</a>`);
+    h+=crumb+`</div>`;
+    const subs=childFolders(fileCwd),fls=folderFiles(fileCwd);
+    h+=`<div class="card">`;
+    if(!subs.length&&!fls.length)h+=`<div class="empty">空です。ファイルやフォルダを追加してください。</div>`;
+    subs.forEach(fd=>{const cnt=childFolders(fd.id).length+folderFiles(fd.id).length;
+      h+=`<div class="frow"><span class="ic">📁</span><span class="nm" style="cursor:pointer" onclick="fileGo('${fd.id}')">${esc(fd.name)}<div class="meta">${cnt}件${fd.memo?"・"+esc(fd.memo):""}</div></span><button class="t-edit" onclick="openFolderDetail('${fd.id}')">✎</button></div>`;});
+    fls.forEach(f=>h+=fileRow(f,false));
+    h+=`</div>`;
+  }
+  h+=selBar();
+  $("fmBody").innerHTML=h;
+}
+function fileGo(id){fileCwd=id;fileSel.clear();renderFmBody();}
+function toggleSel(id){if(fileSel.has(id))fileSel.delete(id);else fileSel.add(id);renderFmBody();}
+/* フォルダ追加 */
+function openAddFolder(){
+  $("modalBody").innerHTML=`<h2>フォルダを追加</h2>
+    <label>フォルダ名</label><input type="text" id="nfName">
+    <label>位置（どのフォルダの下に作るか）</label><select id="nfParent">${folderOptions(null)}</select>
+    <label>メモ（任意）</label><textarea id="nfMemo"></textarea>
+    <div class="m-actions"><button class="btn-ghost" onclick="closeModal()">キャンセル</button><button class="btn-grad" onclick="saveFolder()">追加する</button></div>`;
+  openModal("genModal");const s=$("nfParent");if(s)s.value=fileCwd||"";
+}
+async function saveFolder(){const name=$("nfName").value.trim();if(!name){alert("フォルダ名を入れてください");return;}
+  const {error}=await sb.from("folders").insert([{name,parent_id:$("nfParent").value||null,memo:$("nfMemo").value}]);
+  if(error){alert("保存に失敗："+error.message);return;}closeModal();await loadData();renderFilesScreen();}
+/* フォルダ詳細 */
+function openFolderDetail(id){const fd=FOLDERS.find(f=>f.id===id);
+  $("modalBody").innerHTML=`<h2>フォルダの詳細</h2>
+    <label>フォルダ名</label><input type="text" id="fdName" value="${esc(fd.name)}">
+    <label>メモ</label><textarea id="fdMemo">${esc(fd.memo||"")}</textarea>
+    <label>位置（移動先）</label><select id="fdParent">${folderOptions(id)}</select>
+    <div class="m-actions"><button class="btn-ghost" onclick="closeModal()">閉じる</button><button class="btn-grad" onclick="saveFolderDetail('${id}')">変更する</button></div>
+    <button class="btn-del" onclick="deleteFolder('${id}')">このフォルダを削除する</button>`;
+  openModal("genModal");const s=$("fdParent");if(s)s.value=fd.parent_id||"";
+}
+async function saveFolderDetail(id){const name=$("fdName").value.trim();if(!name){alert("フォルダ名を入れてください");return;}
+  const {error}=await sb.from("folders").update({name,memo:$("fdMemo").value,parent_id:$("fdParent").value||null}).eq("id",id);
+  if(error){alert("保存に失敗："+error.message);return;}closeModal();await loadData();renderFilesScreen();}
+async function deleteFolder(id){if(!confirm("このフォルダを中身ごと削除します。よろしいですか？"))return;
+  const ids=[id].concat(descendantFolderIds(id));
+  const paths=FILES.filter(f=>ids.indexOf(f.folder_id)>=0).map(f=>f.storage_path);
+  if(paths.length)await sb.storage.from("files").remove(paths);
+  await sb.from("folders").delete().eq("id",id);
+  if(fileCwd===id||descendantFolderIds(id).indexOf(fileCwd)>=0)fileCwd=null;
+  closeModal();await loadData();renderFilesScreen();}
+/* ファイル追加 */
+function openAddFile(){fmPending=[];fmUploader=ME.full_name||ME.email||"";fmFolder=fileCwd||"";renderAFB();openModal("genModal");}
+function renderAFB(){
+  let h=`<h2>ファイルを追加</h2>
+    <label>登録者 <span style="color:var(--red)">必須</span></label><input type="text" id="afUploader" value="${esc(fmUploader)}" oninput="fmUploader=this.value">
+    <label>位置（保存先フォルダ）</label><select id="afFolder" onchange="fmFolder=this.value">${folderOptions(null)}</select>
+    <label>ファイル <span style="color:var(--red)">必須</span></label>
+    <div class="dropzone" id="afDrop" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="fmDrop(event)">
+      ここにドラッグ＆ドロップ（複数可）<br><button class="btn-line" style="width:auto;margin:10px auto 0;display:inline-block;padding:8px 16px" onclick="document.getElementById('afInput').click()">ファイルを選択</button>
+      <input type="file" id="afInput" multiple style="display:none" onchange="fmPick(event)"></div>`;
+  if(fmPending.length)h+=`<div style="margin-top:10px">`+fmPending.map((f,i)=>`<div class="frow"><span class="ic">${fileIconByName(f.name,f.type)}</span><span class="nm">${esc(f.name)}<div class="meta">${fmtSize(f.size)}</div></span><button class="t-edit" style="color:var(--red)" onclick="fmRemove(${i})">×</button></div>`).join("")+`</div>`;
+  if(fmPending.length===1)h+=`<label>ファイル名（変更できます）</label><input type="text" id="afName" value="${esc(fmPending[0].name)}">`;
+  h+=`<div class="m-actions"><button class="btn-ghost" onclick="closeModal()">キャンセル</button><button class="btn-grad" onclick="doUpload()">追加する</button></div><button class="btn-line" onclick="closeModal()">フォルダ一覧へ</button>`;
+  $("modalBody").innerHTML=h;const s=$("afFolder");if(s)s.value=fmFolder;
+}
+function fmPick(e){for(const f of e.target.files)fmPending.push(f);renderAFB();}
+function fmDrop(e){e.preventDefault();for(const f of e.dataTransfer.files)fmPending.push(f);renderAFB();}
+function fmRemove(i){fmPending.splice(i,1);renderAFB();}
+async function doUpload(){
+  const uploader=($("afUploader").value||"").trim();const folder=$("afFolder").value||null;
+  if(!uploader){alert("登録者は必須です");return;}
+  if(!fmPending.length){alert("ファイルを選んでください");return;}
+  const single=fmPending.length===1,customName=single&&$("afName")?$("afName").value.trim():"";
+  for(let i=0;i<fmPending.length;i++){const file=fmPending[i];
+    const path=(crypto&&crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+i+"-"+Math.random().toString(36).slice(2));
+    const up=await sb.storage.from("files").upload(path,file);
+    if(up.error){alert("アップロード失敗："+up.error.message);return;}
+    const nm=(single&&customName)?customName:file.name;
+    const ins=await sb.from("files").insert([{folder_id:folder,name:nm,storage_path:path,mime:file.type,size:file.size,uploader}]);
+    if(ins.error){alert("保存に失敗："+ins.error.message);return;}
+  }
+  closeModal();await loadData();renderFilesScreen();alert(fmPending.length+"件のファイルを追加しました。");
+}
+/* ダウンロード・移動・削除 */
+async function downloadFile(id){const f=FILES.find(x=>x.id===id);if(!f)return;
+  const {data,error}=await sb.storage.from("files").createSignedUrl(f.storage_path,60,{download:f.name});
+  if(error){alert("ダウンロード失敗："+error.message);return;}
+  const a=document.createElement("a");a.href=data.signedUrl;a.download=f.name;document.body.appendChild(a);a.click();a.remove();}
+async function downloadSelected(){for(const id of [...fileSel]){await downloadFile(id);}}
+function openMove(){
+  $("modalBody").innerHTML=`<h2>${fileSel.size}件を移動</h2><label>移動先フォルダ</label><select id="mvFolder">${folderOptions(null)}</select>
+    <div class="m-actions"><button class="btn-ghost" onclick="closeModal()">キャンセル</button><button class="btn-grad" onclick="doMove()">移動する</button></div>`;openModal("genModal");}
+async function doMove(){const folder=$("mvFolder").value||null;
+  const {error}=await sb.from("files").update({folder_id:folder}).in("id",[...fileSel]);
+  if(error){alert("移動に失敗："+error.message);return;}fileSel.clear();closeModal();await loadData();renderFilesScreen();}
+async function deleteSelected(){if(!confirm(fileSel.size+"件のファイルを削除します。よろしいですか？"))return;
+  const ids=[...fileSel],paths=ids.map(id=>{const f=FILES.find(x=>x.id===id);return f&&f.storage_path;}).filter(Boolean);
+  if(paths.length)await sb.storage.from("files").remove(paths);
+  await sb.from("files").delete().in("id",ids);
+  fileSel.clear();await loadData();renderFilesScreen();}
 
 $("modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal();});
 
