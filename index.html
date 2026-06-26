@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>シゴデキ店長アプリ（クラウド版）</title>
 <meta name="theme-color" content="#6d5efc">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -82,8 +85,8 @@
   .scope-note{font-size:13px;font-weight:700;color:var(--navy);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:14px 0 0;}
   .hint{font-size:12px;color:var(--muted);margin-top:6px;}
   nav.bottom{position:fixed;left:0;right:0;bottom:0;z-index:30;background:#fff;display:flex;box-shadow:0 -2px 16px rgba(80,70,200,.12);border-top:1px solid var(--line);max-width:var(--appw);margin:0 auto;}
-  nav.bottom button{flex:1;border:none;background:none;padding:9px 0 11px;color:var(--muted);font-size:10px;font-weight:700;}
-  nav.bottom button .ni{display:block;font-size:19px;margin-bottom:1px;opacity:.55;} nav.bottom button.on{color:var(--navy);} nav.bottom button.on .ni{opacity:1;}
+  nav.bottom button{flex:1;border:none;background:none;padding:9px 0 11px;color:var(--muted);font-size:9.5px;font-weight:700;}
+  nav.bottom button .ni{display:block;font-size:18px;margin-bottom:1px;opacity:.55;} nav.bottom button.on{color:var(--navy);} nav.bottom button.on .ni{opacity:1;}
   .script-card{background:var(--grad);color:#fff;border-radius:20px;padding:18px;margin-bottom:14px;box-shadow:0 10px 26px rgba(109,94,252,.35);}
   .script-card .lab{font-size:12px;font-weight:700;opacity:.9;}
   .script-card h3{font-size:20px;margin:8px 0 10px;font-weight:800;}
@@ -406,6 +409,7 @@ function renderApp(){
       <button data-m="qsc" onclick="go('qsc')"><span class="ni">📋</span>QSC</button>
       <button data-m="shift" onclick="go('shift')"><span class="ni">🗓</span>シフト</button>
       <button data-m="report" onclick="go('report')"><span class="ni">📈</span>月次戦略</button>
+      <button data-m="files" onclick="openFiles()"><span class="ni">📁</span>ファイル</button>
       <button data-m="survey" onclick="go('survey')"><span class="ni">📝</span>アンケート</button>
     </nav>`;
   if(ME.role==="hq") $("vpick").onclick=openStorePicker;
@@ -449,7 +453,6 @@ function pickView(mode,id){view={mode,storeId:mode==="hq"?view.storeId:id};qscVi
 function renderHome(){
   let h=`<div class="card"><div class="hello">${ME.role==="hq"&&view.mode==="hq"?"本部のみなさん、おつかれさまです":esc(storeName(view.mode==="hq"?ME.store_id:view.storeId))+" おつかれさまです"}
     <small>${new Date().getMonth()+1}月${new Date().getDate()}日（${wdJa[new Date().getDay()]}）</small></div></div>`;
-  h+=`<button class="btn-grad" style="margin-bottom:14px" onclick="openFiles()">📁 ファイル管理を開く</button>`;
   h+=`<div class="sec-h"><span class="dot"></span>本部からのお知らせ</div><div class="card">`;
   h+= NOTICES.length? NOTICES.map(n=>`<div class="notice"><span class="nd">${(n.date||"").slice(5)}</span><span>${esc(n.text)}</span></div>`).join("") : `<div class="empty">お知らせはありません</div>`;
   h+=`</div>`;
@@ -549,6 +552,7 @@ function setScope(s){scopeType=s;document.querySelectorAll("#scopeSeg button").f
 function setFreq(f){freqType=f;document.querySelectorAll("#freqSeg button").forEach(b=>b.className=b.dataset.f===f?"on":"");
   $("subWeekly").style.display=f==="weekly"?"block":"none";$("subMonthlyDay").style.display=f==="monthlyDay"?"block":"none";
   $("subMonthlyNth").style.display=f==="monthlyNth"?"block":"none";$("subOnce").style.display=f==="once"?"block":"none";}
+function openModal(){$("modal").classList.add("on");}
 function closeModal(){$("modal").classList.remove("on");}
 function fields(){return{category:$("fCat").value,name:$("fName").value.trim(),freq:freqType,
   weekday:$("fWeekday")?Number($("fWeekday").value):null,day:$("fDay")?Number($("fDay").value):null,
@@ -1109,7 +1113,8 @@ function selBar(){if(!fileSel.size)return "";return `<div class="fm-actions"><bu
 function renderFilesScreen(){
   $("main").innerHTML=`<div class="fm-bar">
     <button class="btn-grad" style="margin:0;padding:11px 16px" onclick="openAddFile()">＋ ファイルを追加</button>
-    <button class="btn-line" style="margin:0;width:auto;padding:11px 16px" onclick="openAddFolder()">＋ フォルダを追加</button></div>
+    <button class="btn-line" style="margin:0;width:auto;padding:11px 16px" onclick="openAddFolder()">＋ フォルダを追加</button>
+    <button class="btn-line" style="margin:0;width:auto;padding:11px 16px" onclick="openFileMenu()">⋯ その他の操作</button></div>
     <input type="text" id="fmSearch" placeholder="🔍 ファイル名で検索（全フォルダから）" value="${esc(fileSearch)}" oninput="onFileSearch(this.value)" style="margin-bottom:12px">
     <div id="fmBody"></div>`;
   renderFmBody();
@@ -1123,6 +1128,9 @@ function renderFmBody(){
     h+= res.length? res.map(f=>fileRow(f,true)).join("") : `<div class="empty">「${esc(q)}」に一致するファイルがありません</div>`;
     h+=`</div>`;
   }else{
+    if(localStorage.getItem("fm_hideTree")!=="1"){let tree="";
+      (function walk(pid,d){childFolders(pid).forEach(f=>{tree+=`<div style="padding:3px 0;${f.id===fileCwd?'font-weight:800;color:var(--navy)':''}"><a onclick="fileGo('${f.id}')" style="cursor:pointer">${"　".repeat(d)}📁 ${esc(f.name)}</a></div>`;walk(f.id,d+1);});})(null,0);
+      if(tree)h+=`<div class="card" style="padding:12px 16px"><div class="grp-title">フォルダツリー</div>${tree}</div>`;}
     const path=folderPath(fileCwd);
     let crumb=`<div class="crumb"><a onclick="fileGo(null)">📁 ファイル管理（ルート）</a>`;
     path.forEach(p=>crumb+=` ▸ <a onclick="fileGo('${p.id}')">${esc(p.name)}</a>`);
@@ -1222,6 +1230,35 @@ async function deleteSelected(){if(!confirm(fileSel.size+"件のファイルを�
   if(paths.length)await sb.storage.from("files").remove(paths);
   await sb.from("files").delete().in("id",ids);
   fileSel.clear();await loadData();renderFilesScreen();}
+
+/* ===== ファイル管理：その他の操作 ===== */
+let reorderIds=[];
+function openFileMenu(){
+  const notify=localStorage.getItem("fm_notify_"+(ME.email||"u"))==="1";
+  const hideTree=localStorage.getItem("fm_hideTree")==="1";
+  $("modalBody").innerHTML=`<h2>その他の操作</h2>
+    <button class="btn-line" style="margin-top:0" onclick="closeModal();openCurrentFolderDetail()">📁 フォルダの詳細（このフォルダ）</button>
+    <button class="btn-line" onclick="closeModal();openReorder()">↕ フォルダの順番を変更する</button>
+    <div class="sec-h"><span class="dot"></span>個人設定</div>
+    <div class="card">
+      <div class="toggle"><div><div class="t-name">更新通知</div><div class="t-meta">ファイル追加・更新の通知を受け取る</div></div><button class="sw ${notify?'on':''}" onclick="toggleFmNotify(this)"><i></i></button></div>
+      <div class="toggle"><div><div class="t-name">フォルダツリーを隠す</div><div class="t-meta">上部のフォルダ一覧を表示/非表示</div></div><button class="sw ${hideTree?'on':''}" onclick="toggleFmTree(this)"><i></i></button></div>
+    </div>
+    <p class="hint">※更新通知は設定を保存します（実際の通知配信は本格版で対応）。</p>
+    <div class="m-actions"><button class="btn-grad" onclick="closeModal()">閉じる</button></div>`;
+  openModal();
+}
+function openCurrentFolderDetail(){ if(fileCwd)openFolderDetail(fileCwd); else alert("ルートフォルダには詳細はありません。サブフォルダを開いてからご利用ください。"); }
+function toggleFmNotify(btn){const k="fm_notify_"+(ME.email||"u");localStorage.setItem(k,localStorage.getItem(k)==="1"?"0":"1");btn.classList.toggle("on");}
+function toggleFmTree(btn){localStorage.setItem("fm_hideTree",localStorage.getItem("fm_hideTree")==="1"?"0":"1");btn.classList.toggle("on");renderFmBody();}
+function openReorder(){reorderIds=childFolders(fileCwd).map(f=>f.id);renderReorder();openModal();}
+function renderReorder(){
+  if(!reorderIds.length){$("modalBody").innerHTML=`<h2>フォルダの順番を変更</h2><div class="empty">このフォルダの中にサブフォルダがありません。</div><div class="m-actions"><button class="btn-grad" onclick="closeModal()">閉じる</button></div>`;return;}
+  const rows=reorderIds.map((id,i)=>{const f=FOLDERS.find(x=>x.id===id);return `<div class="frow"><span class="ic">📁</span><span class="nm">${esc(f.name)}</span><button class="t-edit" onclick="reorderMove(${i},-1)" ${i===0?'style="opacity:.3"':''}>↑</button><button class="t-edit" onclick="reorderMove(${i},1)" ${i===reorderIds.length-1?'style="opacity:.3"':''}>↓</button></div>`;}).join("");
+  $("modalBody").innerHTML=`<h2>フォルダの順番を変更</h2><p class="hint">${esc(folderPathStr(fileCwd))} 内のサブフォルダ。↑↓で並べ替え、最後に「変更する」を押してください。</p><div class="card">${rows}</div><div class="m-actions"><button class="btn-ghost" onclick="closeModal()">やめる</button><button class="btn-grad" onclick="saveReorder()">変更する</button></div>`;
+}
+function reorderMove(i,d){const j=i+d;if(j<0||j>=reorderIds.length)return;const t=reorderIds[i];reorderIds[i]=reorderIds[j];reorderIds[j]=t;renderReorder();}
+async function saveReorder(){for(let i=0;i<reorderIds.length;i++){await sb.from("folders").update({sort:i}).eq("id",reorderIds[i]);}closeModal();await loadData();renderFilesScreen();}
 
 $("modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal();});
 
