@@ -120,6 +120,14 @@
   .rt-good{background:#e7f0ff!important;color:#2563eb;font-weight:800;} .rt-bad{background:#fff1f3!important;color:#f43f5e;font-weight:800;}
   .qsc-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);} .qsc-item:first-child{border-top:none;}
   .qsc-item .qn{flex:1;font-size:13.5px;}
+  .alarm-ov{position:fixed;inset:0;background:rgba(20,22,40,.55);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;}
+  .alarm-card{background:#fff;border-radius:20px;max-width:360px;width:100%;padding:22px 20px;box-shadow:0 20px 50px rgba(0,0,0,.3);animation:alpop .25s ease;}
+  @keyframes alpop{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
+  .alarm-ttl{font-size:20px;font-weight:800;text-align:center;}
+  .alarm-sub{font-size:13px;color:var(--muted);text-align:center;margin:6px 0 14px;line-height:1.5;}
+  .alarm-list{max-height:46vh;overflow-y:auto;margin-bottom:16px;}
+  .al-h{font-weight:800;font-size:13.5px;margin:10px 0 6px;}
+  .al-item{font-size:14px;padding:7px 9px;border-radius:8px;background:#f5f6ff;margin-bottom:5px;font-weight:600;}
   .ox{display:flex;gap:6px;flex:0 0 auto;}
   .ox button{width:40px;height:36px;border:1.5px solid var(--line);border-radius:9px;background:#fafaff;font-size:17px;font-weight:800;color:#aab;}
   .ox button.o.on{background:var(--green-bg);border-color:var(--green);color:var(--green);}
@@ -247,30 +255,255 @@ const NATIONAL_TOPICS=[
   {t:"テイクアウト・デリバリー",d:"中食需要は定着。丼・いなり・天ぷら弁当など持ち帰り商品や、雨の日のデリバリーで機会ロスを補う。配達手数料(約30%)を見込んだ価格設計を。"},
   {t:"上場外食大手の打ち手",d:"大手は価格改定＋価値訴求、モバイルオーダー/セルフレジ、クーポンアプリ・サブスク、期間限定・トッピング訴求を推進。取り入れられる打ち手は模倣する。"}
 ];
-let QSC=[], qscState={}, qscViewStore=null;
+let QSC=[], qscState={}, qscViewStore=null, qscMode="daily";
 const QSC_ITEMS=[
- {cat:"Q（品質）",items:[
-   {id:"q1",t:"麺の茹で時間・かたさは基準どおりか"},
-   {id:"q2",t:"だしの温度・濃度は基準どおりか"},
-   {id:"q3",t:"トッピングの鮮度・盛り付けは基準どおりか"},
-   {id:"q4",t:"提供温度は適切か"},
-   {id:"q5",t:"廃棄・ロス管理ができているか"}]},
- {cat:"S（サービス）",items:[
-   {id:"s1",t:"笑顔・あいさつ・声かけができているか"},
-   {id:"s2",t:"提供スピードは基準内か"},
-   {id:"s3",t:"注文・会計の正確さは保たれているか"},
-   {id:"s4",t:"席案内・気配りは適切か"},
-   {id:"s5",t:"クレーム対応の手順を守れているか"}]},
- {cat:"C（清潔）",items:[
-   {id:"c1",t:"厨房の清掃・整理整頓ができているか"},
-   {id:"c2",t:"フロア・客席・卓上が清潔か"},
-   {id:"c3",t:"トイレの清掃・備品補充ができているか"},
-   {id:"c4",t:"制服・身だしなみは清潔か"},
-   {id:"c5",t:"手洗い・衛生管理を徹底しているか"}]}
+ {cat:"表｜店頭・駐車場",items:[
+   {id:"n1",t:"店舗の看板、照明などに異常はないか"},
+   {id:"n2",t:"回転灯は正常な状態に保たれているか"},
+   {id:"n3",t:"のぼりに破れ・色褪せ等の不備はないか（3か月毎交換）"},
+   {id:"n4",t:"のぼりの高さは統一されているか（タルミの無い状態）"},
+   {id:"n5",t:"のぼりは通行者から認識できるように配置できているか"},
+   {id:"n6",t:"駐車場の車止めに破損はなく安全に車が止められる状態か"},
+   {id:"n7",t:"駐車場にゴミや雑草はないか"},
+   {id:"n8",t:"植木等の植物は枯れ・腐食等無く綺麗な状態で保たれているか"},
+   {id:"n9",t:"自動販売機周辺は綺麗な状態で保たれているか"},
+   {id:"n10",t:"お客様用の喫煙スペースは正常な状態で保たれているか"},
+   {id:"n11",t:"屋外照明は無駄なく必要なものだけ使用しているか"},
+   {id:"n12",t:"外観から開店している事が伝わり、お客様を迎えられる状態か（暖簾、営業中札など）"},
+   {id:"n13",t:"外部窓は綺麗な状態で保たれているか（3㎠以内の汚れ2個以下）"},
+   {id:"n14",t:"外部に蜘蛛の巣等の異常が発生していないか"},
+   {id:"n15",t:"ゴミ庫の段ボールは整理された状態で捨てられているか"},
+   {id:"n16",t:"ゴミ庫のゴミは分別されて捨てられているか"},
+   {id:"n17",t:"ゴミ庫内は定期的に清掃されており、異臭はないか"}]},
+ {cat:"表｜店内・客席",items:[
+   {id:"n18",t:"風除室は綺麗な状態に保たれているか"},
+   {id:"n19",t:"店内の温度は適正な状態に保たれているか"},
+   {id:"n20",t:"店内の有線の音量は適正な状態であるか"},
+   {id:"n21",t:"お客様用手洗い場周辺は清潔に保たれているか"},
+   {id:"n22",t:"ハンドソープ、アルコール、ペーパータオルは補充されているか"},
+   {id:"n23",t:"お盆は汚れがなく、異臭はしないか"},
+   {id:"n24",t:"メニューは商品名・価格が分かりやすく清潔な状態であるか"},
+   {id:"n25",t:"メニューボードやポスターに破れ、汚れはないか"},
+   {id:"n26",t:"ショーケース、カウンターは破損等がなく清潔な状態か"},
+   {id:"n27",t:"お客様用備品（トング、袋など）は補充されているか"},
+   {id:"n28",t:"レジは清潔な状態で会計金額がお客様に見え易いか"},
+   {id:"n29",t:"客席床や座敷部分に汚れや食べ落としなどがないか"},
+   {id:"n30",t:"マット等は清潔な状態で保たれているか"},
+   {id:"n31",t:"テーブル、カウンター席上はキレイな状態か"},
+   {id:"n32",t:"椅子は清掃されており清潔な状態か"},
+   {id:"n33",t:"カスタートレーに汚れはないか"},
+   {id:"n34",t:"カスターセットは清潔な状態で、補充されているか"},
+   {id:"n35",t:"お箸は洗い残し、水濡れ等無く清潔な状態か"},
+   {id:"n36",t:"店内の照明で切れている部分はないか"},
+   {id:"n37",t:"新聞・雑誌等は整理整頓されているか"},
+   {id:"n38",t:"お土産コーナーは整理整頓されているか"},
+   {id:"n39",t:"トイレは清潔な状態で異臭はないか"},
+   {id:"n40",t:"トイレの備品（ペーパー、石鹸、アルコール等）に欠品はないか"},
+   {id:"n41",t:"エアコンフィルターや換気扇は清掃されているか"},
+   {id:"n42",t:"返却口付近は清潔でゴミなど落ちていないか"},
+   {id:"n43",t:"店内に蜘蛛の巣や害虫などがいないか"}]},
+ {cat:"表｜サイドメニュー",items:[
+   {id:"n44",t:"天ぷらは正しく油切を行えているか（陳列バット内に油が溜まっていないか）"},
+   {id:"n45",t:"天ぷらは取りやすくきれいな状態で陳列されているか"},
+   {id:"n46",t:"来客数に応じた揚げ量で調節しているか（時間帯毎の客数理解）"},
+   {id:"n47",t:"おでんの具材は正しく調理されているか"},
+   {id:"n48",t:"おでんの出汁は変色・濁り等無く正常な状態で保たれているか"},
+   {id:"n49",t:"おでん味噌等の薬味は汚れ等無く清潔な状態で保たれているか"},
+   {id:"n50",t:"お米は正しく炊飯されているか（米の硬さ）"},
+   {id:"n51",t:"ご飯物は規定の分量で正しく製造されているか"},
+   {id:"n52",t:"ご飯物の保管・提供は正しい状態でされているか"},
+   {id:"n53",t:"一品物は正しく計量されているか"},
+   {id:"n54",t:"一品物は正しい状態で保管・提供されているか（ラップなど）"}]},
+ {cat:"表｜薬味台・給水機",items:[
+   {id:"n55",t:"薬味、調味料は補充されており、十分な量があるか"},
+   {id:"n56",t:"ネギは乾燥・変色等なく正しい状態で提供・保管されているか"},
+   {id:"n57",t:"大根おろしは削りカスや乾燥・変色等なく正しい状態で提供・保管されているか"},
+   {id:"n58",t:"レモンは規定通りカットされ乾燥・変色等なく正しい状態で提供・保管されているか"},
+   {id:"n59",t:"生姜は削りカス・乾燥・変色等なく正しい状態で提供・保管されているか"},
+   {id:"n60",t:"天カスは、具材・黒焦げ・15㎜以上の大玉等なく正しい状態で提供・保管されているか"},
+   {id:"n61",t:"薬味、調味料の消費期限は厳守されているか"},
+   {id:"n62",t:"薬味台上に汚れはなく、清潔な状態か"},
+   {id:"n63",t:"給茶器は定期的に清掃されているか"},
+   {id:"n64",t:"アイスディスペンサーは定期的に清掃されているか"},
+   {id:"n65",t:"コップラックは清掃されており、清潔な状態か"},
+   {id:"n66",t:"グラス・湯呑は茶渋・濁り等無く清潔な状態に保たれているか"},
+   {id:"n67",t:"お子様用食器類は分かり易く配置され、清潔に保たれているか"}]},
+ {cat:"表｜接客",items:[
+   {id:"n68",t:"お客様の来店・退店時の挨拶は元気よく出来ているか"},
+   {id:"n69",t:"お客様を順路に沿ってご案内できているか"},
+   {id:"n70",t:"お子様連れやご高齢の方などのフォローはできているか"},
+   {id:"n71",t:"「麺入ります！」など作業ごとの声出しを行っているか"},
+   {id:"n72",t:"オススメ商品の販促は行われているか"},
+   {id:"n73",t:"天ぷらの揚げたて等の販促は行われているか"},
+   {id:"n74",t:"おにぎり・いなり等の販促は行われているか"},
+   {id:"n75",t:"「お待たせしました」「ごゆっくりどうぞ」の声かけを行っているか"},
+   {id:"n76",t:"作業はお客様をお待たせすることなく円滑に行われているか"},
+   {id:"n77",t:"レジで商品の読み上げ確認を行っているか"},
+   {id:"n78",t:"レジでは丁寧な金銭授受が行われているか"},
+   {id:"n79",t:"店員の身だしなみは正常な状態に保たれているか"},
+   {id:"n80",t:"イレギュラー時に適正な対応が出来る様に教育・情報共有は出来ているか"},
+   {id:"n81",t:"食器返却時に「ありがとうございます！」と元気よく挨拶できているか"}]},
+ {cat:"表｜渡し・うどん",items:[
+   {id:"n82",t:"お客様からのご注文は元気よく復唱し、確認できているか"},
+   {id:"n83",t:"注文から提供までの時間は適正か"},
+   {id:"n84",t:"商品の見栄えは良いか"},
+   {id:"n85",t:"使用するだしやうどんの分量、トッピングに間違いはないか"},
+   {id:"n86",t:"お待ち頂く際は番号札をお渡しし、目安時間を伝えているか"},
+   {id:"n87",t:"大＝3玉のご案内、海苔や鰹節の有無の確認ができているか"},
+   {id:"n88",t:"肉、カレー、季節商品の保管温度は適正か"},
+   {id:"n89",t:"かけだしの消費期限は守られており、味は正常か"},
+   {id:"n90",t:"かけだしの提供温度は適正か"},
+   {id:"n91",t:"冷かけだしの消費期限は守られており、味は正常か"},
+   {id:"n92",t:"冷かけだしの提供温度は適正か"},
+   {id:"n93",t:"ざるだしの消費期限は守られており、味は正常か"},
+   {id:"n94",t:"ざるだしの提供温度は適正か"},
+   {id:"n95",t:"釜揚げだしの消費期限は守られており、味は正常か"},
+   {id:"n96",t:"釜揚げだしの提供温度は適正か"},
+   {id:"n97",t:"冷ぶっかけだしの消費期限は守られており、味は正常か"},
+   {id:"n98",t:"冷ぶっかけだしの提供温度は適正か"},
+   {id:"n99",t:"温ぶっかけだしの消費期限は守られており、味は正常か"},
+   {id:"n100",t:"温ぶっかけだしの提供温度は適正か"}]},
+ {cat:"裏｜食材管理",items:[
+   {id:"n101",t:"1時間以内に使用しない団子・生地は熟成庫に保管しているか"},
+   {id:"n102",t:"生地踏み後の生地の大きさは適正か"},
+   {id:"n103",t:"生地はビニール袋に入れて保管されており、乾燥・湿気対策はできているか"},
+   {id:"n104",t:"麺打ちは規定通りの大きさ、厚さになるように行えているか"},
+   {id:"n105",t:"麺切り時に発生した30cm以下の短い麺は廃棄しているか"},
+   {id:"n106",t:"麺混ぜは麺線が伸びるようにしっかりと魅せる動きで行えているか"},
+   {id:"n107",t:"茹で上げ直前の麺の状態を確認し、茹で時間の調整を行っているか"},
+   {id:"n108",t:"茹で上がった麺の断面の比率が規定通りになっているか（1:1:1）"},
+   {id:"n109",t:"締め作業を行い、麺の粗熱やヌメリをしっかり取っているか"},
+   {id:"n110",t:"出来上がった麺の太さ、厚さは規定通りか"},
+   {id:"n111",t:"規定通りの重量で玉取りはできているか"},
+   {id:"n112",t:"うどん玉は正しい順番と形でセイロに並べられているか"},
+   {id:"n113",t:"来客数に応じて茹でる量を調節しているか（一時間当たりの使用予測）"},
+   {id:"n114",t:"麺のHT（使用期限）は厳守されているか"},
+   {id:"n115",t:"店内に使用期限、消費期限切れの食材はないか"},
+   {id:"n116",t:"食材は正しい温度帯で保管されているか"},
+   {id:"n117",t:"食材は整理整頓され保管されているか"},
+   {id:"n118",t:"食材の先入れ先出しは行えているか"},
+   {id:"n119",t:"食材は販売予測数以上の過剰な在庫はないか"},
+   {id:"n120",t:"食材の解凍は正しく行われているか"},
+   {id:"n121",t:"食材の仕込みはマニュアル通り、適切に行えているか"},
+   {id:"n122",t:"仕込み済み食材には仕込み日や使用期限などが明記されているか"},
+   {id:"n123",t:"未開封食材に変色、異臭などの異常はないか"},
+   {id:"n124",t:"仕込み済み食材に変色、異臭などの異常はないか"},
+   {id:"n125",t:"食材は60cm以下の場所に放置されていないか"}]},
+ {cat:"裏｜備品管理",items:[
+   {id:"n126",t:"手洗い場の爪ブラシは清潔な状態で正しく使われているか"},
+   {id:"n127",t:"アルコールはすぐ使える場所にあるか（手洗い、レジ、渡し口、ホール手洗い、トイレ）"},
+   {id:"n128",t:"アルコール容器・スプレーは清潔に保たれているか"},
+   {id:"n129",t:"生地踏みシートは清潔な状態か"},
+   {id:"n130",t:"まな板は食材ごとに区別されており、清潔で衛生的な状態か"},
+   {id:"n131",t:"包丁は清潔で衛生的な状態で切れ味に問題はないか"},
+   {id:"n132",t:"包丁入れは清潔で衛生的な状態か"},
+   {id:"n133",t:"洗浄スポンジは用途ごとに分けられており、清潔な状態か"},
+   {id:"n134",t:"食材タッパーにひび割れ、破損等の異常はないか"},
+   {id:"n135",t:"レードルにひび割れ、破損等の異常はないか"},
+   {id:"n136",t:"寸胴にひび割れ、破損等の異常はないか"},
+   {id:"n137",t:"各種丼にひび割れ、破損などの異常はないか"},
+   {id:"n138",t:"天ぷら取り皿、一品用小皿などにひび割れ、破損等の異常はないか"},
+   {id:"n139",t:"グラス、湯呑みなどにひび割れ、破損等の異常はないか"},
+   {id:"n140",t:"お子様用食器類にひび割れ、破損等の異常はないか"},
+   {id:"n141",t:"その他厨房器具類に異常はないか"},
+   {id:"n142",t:"タオル・ダスターは用途ごとに使い分けられているか"},
+   {id:"n143",t:"清掃用具は清潔な状態で吊り下げ保管されているか"},
+   {id:"n144",t:"ゴミ箱は清掃されているか"}]},
+ {cat:"裏｜設備管理",items:[
+   {id:"n145",t:"冷蔵庫フィルターは定期的に清掃され、清潔な状態か"},
+   {id:"n146",t:"冷蔵庫内床・壁・棚網・送風口は定期的に清掃され、清潔な状態か"},
+   {id:"n147",t:"冷蔵庫外部壁・扉・取手は定期的に清掃され清潔な状態か"},
+   {id:"n148",t:"冷蔵庫の冷却機能に異常はないか（庫内温度を記録）"},
+   {id:"n149",t:"冷凍庫フィルターは定期的に清掃され、清潔な状態か"},
+   {id:"n150",t:"冷凍庫内床・壁・棚網・送風口は定期的に清掃され、清潔な状態か"},
+   {id:"n151",t:"冷凍庫外部壁・扉・取手は定期的に清掃され清潔な状態か"},
+   {id:"n152",t:"冷凍庫の冷却機能に異常はないか（庫内温度を記録）"},
+   {id:"n153",t:"製氷機フィルターは定期的に清掃され、清潔な状態か"},
+   {id:"n154",t:"製氷機内床・壁・スコップは定期的に清掃され、清潔な状態か"},
+   {id:"n155",t:"製氷機外部壁・取手は定期的に清掃され、清潔な状態か"},
+   {id:"n156",t:"製氷機の製氷機能に異常はないか"},
+   {id:"n157",t:"釜は清潔な状態か"},
+   {id:"n158",t:"釜煙突は清掃されているか"},
+   {id:"n159",t:"湯煎機は清潔な状態か"},
+   {id:"n160",t:"フライヤーは清潔な状態か"},
+   {id:"n161",t:"洗浄機は清掃されているか（内部にピンクスライムなどないか）"},
+   {id:"n162",t:"厨房エアコン（スポットエアコン含む）は清掃されているか"},
+   {id:"n163",t:"厨房の棚は清掃されているか"},
+   {id:"n164",t:"水道の蛇口は清潔に保たれているか"},
+   {id:"n165",t:"シンク内（排水溝含む）は清潔にされているか"},
+   {id:"n166",t:"シンク下の棚は清潔にされているか"},
+   {id:"n167",t:"生地踏み場は清潔にされているか"},
+   {id:"n168",t:"厨房床（機材下含む）は清潔にされているか"},
+   {id:"n169",t:"グリストラップは定期的に清掃され、清潔な状態か"},
+   {id:"n170",t:"その他厨房機器、設備類に異常はないか"}]},
+ {cat:"裏｜事務所・バックヤード",items:[
+   {id:"n171",t:"事務所・バックヤードは清掃されているか"},
+   {id:"n172",t:"事務デスク上及び引き出し内は整理整頓されているか"},
+   {id:"n173",t:"備品は種類ごとに分別されているか"},
+   {id:"n174",t:"食材は種類ごとに分別され正しく保管されているか"},
+   {id:"n175",t:"必要のない無駄なものが置かれていないか"},
+   {id:"n176",t:"各自の貴重品は正しく保管されているか"},
+   {id:"n177",t:"長靴は清潔に保たれ整理されているか"},
+   {id:"n178",t:"エアコン・電気は無駄なく使用されているか"},
+   {id:"n179",t:"従業員用の喫煙スペースは正常な状態で保たれているか"},
+   {id:"n180",t:"店舗の入り口キーの管理は正しく行えているか"},
+   {id:"n181",t:"金庫は扉が閉まっており、施錠されているか"}]},
+ {cat:"裏｜店舗管理",items:[
+   {id:"n182",t:"従業員は正しい場面、頻度、手順で手洗いを行っているか"},
+   {id:"n183",t:"各種チェックシートは正しく記入され、保管されているか"},
+   {id:"n184",t:"ファイル、書類は種類ごとに分類され、整理整頓されているか"},
+   {id:"n185",t:"掲示物は古い掲示物がなく、必要な物が掲出されているか"},
+   {id:"n186",t:"売上予算・実績・経費・利益を把握しているか"},
+   {id:"n187",t:"当月の近隣イベントを把握しているか"},
+   {id:"n188",t:"売上予測・予測利益は立てているか"},
+   {id:"n189",t:"売上予測に応じたシフト作成・運営はできているか"},
+   {id:"n190",t:"店舗の適正人員数を把握しており、それに応じた採用ができているか"},
+   {id:"n191",t:"自店の売上に関して改善点を把握しているか"},
+   {id:"n192",t:"売上改善点に対する改善案を持ち、実行できているか"},
+   {id:"n193",t:"改善案を実行した結果に対して確認はしているか"},
+   {id:"n194",t:"店舗ミーティング等で情報（店舗数値、目標など）は全スタッフと共有出来ているか"},
+   {id:"n195",t:"店舗目標に対しての取組が行えているか、また結果の確認は行えているか"},
+   {id:"n196",t:"店舗スタッフは前月に対してスキルアップ出来ているか"},
+   {id:"n197",t:"スタッフスキルアップの為のスケジュールは組めているか"},
+   {id:"n198",t:"スキルアップスケジュールは実行されているか"},
+   {id:"n199",t:"スキルアップスケジュール実行結果の確認はしているか"},
+   {id:"n200",t:"時間帯に応じた準備（オープン準備／ピーク準備／ラスト作業）は万全に行われているか"}]}
 ];
-function qscAllItems(){return QSC_ITEMS.reduce((a,g)=>a.concat(g.items),[]);}
+const QSC_DAILY=[
+ {cat:"Q（品質）",items:[
+   {id:"d1",t:"麺の茹で加減・締め・盛りは基準どおりか"},
+   {id:"d2",t:"各種だしの味・提供温度は正常か"},
+   {id:"d3",t:"天ぷらは揚げたてで油切り・陳列が正しいか"},
+   {id:"d4",t:"薬味・トッピング（ネギ・生姜・大根おろし等）は新鮮で正しく提供・保管されているか"},
+   {id:"d5",t:"食材の消費期限・先入れ先出しは守られているか"},
+   {id:"d6",t:"食材は正しい温度帯で保管されているか"}]},
+ {cat:"S（サービス）",items:[
+   {id:"d7",t:"来店・退店時のあいさつは元気よくできているか"},
+   {id:"d8",t:"注文の復唱・確認、提供スピードは適正か"},
+   {id:"d9",t:"レジの金額表示・読み上げ・金銭授受は正確で丁寧か"},
+   {id:"d10",t:"お子様連れやご高齢の方へのフォローができているか"},
+   {id:"d11",t:"オススメ商品（天ぷら・おにぎり等）の販促ができているか"},
+   {id:"d12",t:"店員の身だしなみは清潔で正常か"}]},
+ {cat:"C（清潔）",items:[
+   {id:"d13",t:"テーブル・カウンター・椅子・客席床は清潔か"},
+   {id:"d14",t:"カスターセット・お箸・お盆は清潔で補充されているか"},
+   {id:"d15",t:"薬味台・給水機まわりは清潔か"},
+   {id:"d16",t:"トイレは清潔で備品が補充されているか"},
+   {id:"d17",t:"手洗い・アルコール・衛生管理を徹底しているか"},
+   {id:"d18",t:"厨房・シンク・床は清潔に保たれているか"},
+   {id:"d19",t:"ゴミの分別・ゴミ庫の管理は正しくできているか"},
+   {id:"d20",t:"店頭・駐車場・のぼり・看板は正常できれいな状態か"}]}
+];
+function qscGroups(){return qscMode==="monthly"?QSC_ITEMS:QSC_DAILY;}
+function qscAllItems(){return qscGroups().reduce((a,g)=>a.concat(g.items),[]);}
+function qscKind(c){if(c.results&&c.results.__kind)return c.results.__kind;return (c.results&&Object.keys(c.results).length>60)?"monthly":"daily";}
+function qscModeName(m){return m==="monthly"?"月次臨店（200項目）":"毎日チェック（簡易20項目）";}
+function setQscMode(m){qscMode=m;render();}
+function qscToggle(){const seg=(m,label)=>`<button onclick="setQscMode('${m}')" style="flex:1;padding:10px 6px;border:none;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer;${qscMode===m?'background:var(--grad);color:#fff;box-shadow:0 3px 10px rgba(109,94,252,.3)':'background:#eef0fb;color:#5b6080'}">${label}</button>`;return `<div style="display:flex;gap:6px;margin-bottom:12px">${seg('daily','毎日チェック<br>簡易20項目')}${seg('monthly','月次臨店<br>200項目')}</div>`;}
 let SHIFTS=[], shiftForm=null, shiftMonth=null;
 let FOLDERS=[], FILES=[], fileCwd=null, fileSearch="", fileSel=new Set(), fmPending=[], fmUploader="", fmFolder="";
+let PROFILES=[], SNAPS=[];
+function roleJa(r){return r==="hq"?"本部":"店長";}
 const HOLIDAYS=new Set([
  "2025-01-01","2025-01-13","2025-02-11","2025-02-23","2025-02-24","2025-03-20","2025-04-29","2025-05-03","2025-05-04","2025-05-05","2025-05-06","2025-07-21","2025-08-11","2025-09-15","2025-09-23","2025-10-13","2025-11-03","2025-11-23","2025-11-24",
  "2026-01-01","2026-01-12","2026-02-11","2026-02-23","2026-03-20","2026-04-29","2026-05-03","2026-05-04","2026-05-05","2026-05-06","2026-07-20","2026-08-11","2026-09-21","2026-09-22","2026-09-23","2026-10-12","2026-11-03","2026-11-23",
@@ -322,6 +555,46 @@ function dueText(t){if(isDone(t))return"完了ずみ";const due=nextDue(t);if(!d
 function storeName(id){const s=STORES.find(x=>x.id===id);return s?s.name:"店舗";}
 function achievement(storeId){const a=TASKS.filter(t=>t.store_id===storeId);const total=a.length,done=a.filter(isDone).length;return{done,total,pct:total?Math.round(done/total*100):0};}
 
+/* ===== タスク期限アラーム（前日・当日 朝9時にまとめて1回） ===== */
+const ALARM_HOUR=9;
+function alarmBeep(){try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;const ac=new AC();let t=ac.currentTime;for(let i=0;i<3;i++){const o=ac.createOscillator(),g=ac.createGain();o.type="sine";o.frequency.value=880;o.connect(g);g.connect(ac.destination);g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.35,t+0.03);g.gain.exponentialRampToValueAtTime(0.0001,t+0.45);o.start(t);o.stop(t+0.47);t+=0.6;}}catch(e){}}
+function alarmNotify(title,body){try{if("Notification"in window&&Notification.permission==="granted")new Notification(title,{body:body});}catch(e){}}
+function maybeAskNotify(){try{if("Notification"in window&&Notification.permission==="default")Notification.requestPermission();}catch(e){}}
+function alarmSid(){return ME?(ME.role==="manager"?ME.store_id:(view&&view.storeId!=null?view.storeId:null)):null;}
+function alarmDueTasks(sid){const today=todayStr();return TASKS.filter(t=>t.store_id===sid&&!isDone(t)).map(t=>({t,diff:daysBetween(today,nextDue(t))})).filter(o=>o.diff===0||o.diff===1);}
+function checkAlarm(){
+  try{
+    if(!ME)return;
+    if(document.getElementById("alarmOverlay"))return;
+    if(new Date().getHours()<ALARM_HOUR)return;
+    const sid=alarmSid();if(sid==null)return;
+    const ackKey="alarmAck_"+sid+"_"+todayStr();
+    if(localStorage.getItem(ackKey))return;
+    const items=alarmDueTasks(sid);
+    if(!items.length)return;
+    showAlarm(items,ackKey);
+  }catch(e){}
+}
+function showAlarm(items,ackKey){
+  alarmBeep();
+  const today=items.filter(o=>o.diff===0).map(o=>o.t),tomo=items.filter(o=>o.diff===1).map(o=>o.t);
+  let list="";
+  if(today.length)list+=`<div class="al-h" style="color:#e0245e">🔴 本日が期限（${today.length}件）</div>`+today.map(t=>`<div class="al-item">・${esc(t.name)}</div>`).join("");
+  if(tomo.length)list+=`<div class="al-h" style="color:#c98a00">🟡 明日が期限（${tomo.length}件）</div>`+tomo.map(t=>`<div class="al-item">・${esc(t.name)}</div>`).join("");
+  alarmNotify("未完了のタスクがあります",[today.length?"本日締切 "+today.length+"件":"",tomo.length?"明日締切 "+tomo.length+"件":""].filter(Boolean).join(" ／ "));
+  const ov=document.createElement("div");ov.id="alarmOverlay";ov.className="alarm-ov";
+  ov.innerHTML=`<div class="alarm-card">
+    <div class="alarm-ttl">⏰ タスクのお知らせ</div>
+    <div class="alarm-sub">朝${ALARM_HOUR}時のリマインドです。<br>未完了のタスクがあります。</div>
+    <div class="alarm-list">${list}</div>
+    <button class="btn-grad" onclick="ackAlarmGo('${ackKey}')">タスク画面をひらく</button>
+    <button class="btn-line" style="margin-top:8px" onclick="ackAlarm('${ackKey}')">あとで（閉じる）</button>
+  </div>`;
+  document.body.appendChild(ov);
+}
+function ackAlarm(k){try{localStorage.setItem(k,"1");}catch(e){}const o=document.getElementById("alarmOverlay");if(o)o.remove();}
+function ackAlarmGo(k){ackAlarm(k);go('task');}
+
 /* ===== 認証・起動 ===== */
 async function boot(){
   $("root").innerHTML=`<div id="loading">読み込み中…</div>`;
@@ -370,6 +643,8 @@ async function loadAll(){
   else{view={mode:"hq",storeId:STORES[0]?.id||null};}
   await loadData();
   renderApp();
+  maybeAskNotify();
+  checkAlarm();
 }
 async function loadData(){
   const {data:tasks}=await sb.from("tasks").select("*").order("created_at");
@@ -973,13 +1248,14 @@ function lineChart(data){
 function setQSC(id,val){ qscState[id]=(qscState[id]===val)?undefined:val; render(); }
 function renderQSCStore(sid){
   const items=qscAllItems(),oCount=items.filter(it=>qscState[it.id]===true).length,score=Math.round(oCount/items.length*100);
-  let h=`<div class="card"><div class="ach-top"><span class="ach-label">QSCチェック（${esc(storeName(sid))}）</span><span class="ach-count">${oCount} / ${items.length} ○</span></div>
+  let h=qscToggle();
+  h+=`<div class="card"><div class="ach-top"><span class="ach-label">${esc(qscModeName(qscMode))}（${esc(storeName(sid))}）</span><span class="ach-count">${oCount} / ${items.length} ○</span></div>
     <div class="ach-pct">${score}<span>%</span></div><div class="bar"><i style="width:${score}%"></i></div></div>`;
-  QSC_ITEMS.forEach(g=>{h+=`<div class="grp-title">${esc(g.cat)}</div><div class="card">`;
+  qscGroups().forEach(g=>{h+=`<div class="grp-title">${esc(g.cat)}</div><div class="card">`;
     g.items.forEach(it=>{const v=qscState[it.id];h+=`<div class="qsc-item"><div class="qn">${esc(it.t)}</div><div class="ox"><button class="o ${v===true?'on':''}" onclick="setQSC('${it.id}',true)">○</button><button class="x ${v===false?'on':''}" onclick="setQSC('${it.id}',false)">✕</button></div></div>`;});
     h+=`</div>`;});
   h+=`<button class="btn-grad" onclick="submitQSC(${sid})">本部へ送信する</button>`;
-  const hist=QSC.filter(c=>c.store_id===sid).sort((a,b)=>a.date.localeCompare(b.date));
+  const hist=QSC.filter(c=>c.store_id===sid&&qscKind(c)===qscMode).sort((a,b)=>a.date.localeCompare(b.date));
   h+=`<div class="sec-h"><span class="dot"></span>これまでの推移</div><div class="card">${lineChart(hist.map(c=>({label:c.date,value:c.score})))}`;
   if(hist.length)h+=`<div style="margin-top:8px">`+hist.slice().reverse().map(c=>`<div class="t-meta">・${c.date.slice(5)}　<b>${c.score}%</b></div>`).join("")+`</div>`;
   h+=`</div>`;return h;
@@ -987,28 +1263,30 @@ function renderQSCStore(sid){
 async function submitQSC(sid){
   const items=qscAllItems(),un=items.filter(it=>qscState[it.id]===undefined).length;
   if(un>0){if(!confirm(un+"件が未チェックです。未チェックは✕として送信します。よろしいですか？"))return;}
-  const results={};items.forEach(it=>results[it.id]=qscState[it.id]===true);
+  const results={__kind:qscMode};items.forEach(it=>results[it.id]=qscState[it.id]===true);
   const score=Math.round(items.filter(it=>qscState[it.id]===true).length/items.length*100);
   const {error}=await sb.from("qsc_checks").insert([{store_id:sid,date:todayStr(),results,score}]);
   if(error){alert("送信に失敗："+error.message);return;}
-  qscState={};await loadData();render();alert("本部へ送信しました。今回のスコア："+score+"%");
+  qscState={};await loadData();render();alert("本部へ送信しました（"+qscModeName(qscMode)+"）。今回のスコア："+score+"%");
 }
 function setQscView(sid){qscViewStore=sid;render();}
 function backQsc(){qscViewStore=null;render();}
 function renderQSCHQ(){
   if(qscViewStore!=null)return renderQSCTrend(qscViewStore);
-  let h=`<div class="card"><div class="ach-label">QSCダッシュボード｜各店の最新スコア</div>`;
-  STORES.forEach(s=>{const hist=QSC.filter(c=>c.store_id===s.id).sort((a,b)=>b.date.localeCompare(a.date));const latest=hist[0],sc=latest?latest.score:null;
+  let h=qscToggle();
+  h+=`<div class="card"><div class="ach-label">QSCダッシュボード｜各店の最新スコア（${esc(qscModeName(qscMode))}）</div>`;
+  STORES.forEach(s=>{const hist=QSC.filter(c=>c.store_id===s.id&&qscKind(c)===qscMode).sort((a,b)=>b.date.localeCompare(a.date));const latest=hist[0],sc=latest?latest.score:null;
     h+=`<div class="store-row"><div class="sr-name">${esc(s.name)}</div><div class="sr-bar"><div class="bar"><i style="width:${sc||0}%"></i></div><div class="t-meta" style="margin-top:4px">${latest?("最新 "+latest.date.slice(5)):"未提出"}</div></div><div class="sr-pct">${sc==null?'—':sc+'%'}</div></div>`;});
   h+=`</div><div class="sec-h"><span class="dot"></span>店舗ごとの推移を見る</div><div class="card">`;
-  STORES.forEach(s=>{h+=`<div class="task"><div class="t-body"><div class="t-name">${esc(s.name)}</div><div class="t-meta">${QSC.filter(c=>c.store_id===s.id).length}回のチェック</div></div><button class="t-edit" onclick="setQscView(${s.id})">推移 ›</button></div>`;});
+  STORES.forEach(s=>{h+=`<div class="task"><div class="t-body"><div class="t-name">${esc(s.name)}</div><div class="t-meta">${QSC.filter(c=>c.store_id===s.id&&qscKind(c)===qscMode).length}回のチェック</div></div><button class="t-edit" onclick="setQscView(${s.id})">推移 ›</button></div>`;});
   h+=`</div>`;return h;
 }
 function renderQSCTrend(sid){
-  const hist=QSC.filter(c=>c.store_id===sid).sort((a,b)=>a.date.localeCompare(b.date));
+  const hist=QSC.filter(c=>c.store_id===sid&&qscKind(c)===qscMode).sort((a,b)=>a.date.localeCompare(b.date));
   const latest=hist.length?hist[hist.length-1].score:null;
   let h=`<button class="btn-line" style="margin:0 0 12px" onclick="backQsc()">← 戻る</button>`;
-  h+=`<div class="card"><div class="ach-top"><span class="ach-label">${esc(storeName(sid))}のQSC推移</span>${latest!=null?`<span class="ach-count">最新 ${latest}%</span>`:""}</div>${lineChart(hist.map(c=>({label:c.date,value:c.score})))}</div>`;
+  h+=qscToggle();
+  h+=`<div class="card"><div class="ach-top"><span class="ach-label">${esc(storeName(sid))}のQSC推移（${esc(qscModeName(qscMode))}）</span>${latest!=null?`<span class="ach-count">最新 ${latest}%</span>`:""}</div>${lineChart(hist.map(c=>({label:c.date,value:c.score})))}</div>`;
   h+=`<div class="sec-h"><span class="dot"></span>履歴（${hist.length}回）</div><div class="card">`;
   h+= hist.length? hist.slice().reverse().map(c=>`<div class="task"><div class="t-body"><div class="t-name">${c.date}</div></div><div class="sr-pct">${c.score}%</div></div>`).join("") : `<div class="empty">まだありません</div>`;
   h+=`</div>`;return h;
@@ -1262,6 +1540,7 @@ async function saveReorder(){for(let i=0;i<reorderIds.length;i++){await sb.from(
 
 $("modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal();});
 
+setInterval(()=>{try{checkAlarm();}catch(e){}},60000);
 boot();
 </script>
 </body>
