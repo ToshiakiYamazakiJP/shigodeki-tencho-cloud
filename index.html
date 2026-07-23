@@ -1357,6 +1357,11 @@ function submitQSC(sid){
 }
 function setQscView(sid){qscViewStore=sid;render();}
 function backQsc(){qscViewStore=null;render();}
+const SV_GROUPS=[
+  {name:"SV真鍋",ids:[1,2,3,4,5,6,7]},
+  {name:"SV糸川",ids:[8,9,10,11,12,13,14]},
+  {name:"SV樫尾（FC）",ids:[15,16]}
+];
 function renderQSCHQ(){
   if(qscViewStore!=null)return renderQSCTrend(qscViewStore);
   let h=qscToggle();
@@ -1371,6 +1376,17 @@ function renderQSCHQ(){
   h+=`<div class="card"><div class="ach-top"><span class="ach-label">グループ全体サマリー（${esc(qscModeName(qscMode))}）</span><span class="ach-count">提出 ${submitted.length}/${STORES.length}店</span></div>
     <div class="ach-pct">${grpAvg==null?'—':grpAvg}<span>%</span></div><div class="bar"><i style="width:${grpAvg||0}%"></i></div>
     <div class="t-meta" style="margin-top:6px">提出店舗の最新スコア平均</div></div>`;
+
+  /* SV（統括）別の平均スコア */
+  h+=`<div class="sec-h"><span class="dot"></span>SV（統括）別の平均スコア</div><div class="card">`;
+  SV_GROUPS.forEach((sv,i)=>{const subs=sv.ids.map(id=>latest[id]).filter(Boolean);const avg=subs.length?Math.round(subs.reduce((a,c)=>a+c.score,0)/subs.length):null;
+    const names=sv.ids.map(id=>storeName(id)).join("・");
+    h+=`<div style="padding:12px 0;${i>0?'border-top:1px solid var(--line)':''}">
+      <div style="display:flex;align-items:center;gap:10px"><div class="sr-name" style="flex:1">${esc(sv.name)}</div><div class="sr-pct">${avg==null?'—':avg+'%'}</div></div>
+      <div class="bar" style="margin:7px 0 5px"><i style="width:${avg||0}%"></i></div>
+      <div class="t-meta">担当${sv.ids.length}店・提出${subs.length}店</div>
+      <div class="t-meta" style="margin-top:3px;line-height:1.5">${esc(names)}</div></div>`;});
+  h+=`</div>`;
 
   /* 全体の平均スコア推移（＋グループ最高） */
   const trHQ=qscTrendSeries(null,qscTrendMetric);
