@@ -257,7 +257,7 @@ const NATIONAL_TOPICS=[
   {t:"テイクアウト・デリバリー",d:"中食需要は定着。丼・いなり・天ぷら弁当など持ち帰り商品や、雨の日のデリバリーで機会ロスを補う。配達手数料(約30%)を見込んだ価格設計を。"},
   {t:"上場外食大手の打ち手",d:"大手は価格改定＋価値訴求、モバイルオーダー/セルフレジ、クーポンアプリ・サブスク、期間限定・トッピング訴求を推進。取り入れられる打ち手は模倣する。"}
 ];
-let QSC=[], qscState={}, qscViewStore=null, qscMode="daily";
+let QSC=[], qscState={}, qscViewStore=null, qscMode="daily", qscSortKey="overall", qscSortDir="desc";
 const QSC_ITEMS=[
  {cat:"表｜店頭・駐車場",items:[
    {id:"n1",t:"店舗の看板、照明などに異常はないか"},
@@ -500,7 +500,11 @@ function qscGroups(){return qscMode==="monthly"?QSC_ITEMS:QSC_DAILY;}
 function qscAllItems(){return qscGroups().reduce((a,g)=>a.concat(g.items),[]);}
 function qscKind(c){if(c.results&&c.results.__kind)return c.results.__kind;return (c.results&&Object.keys(c.results).length>60)?"monthly":"daily";}
 function qscModeName(m){return m==="monthly"?"月次臨店（200項目）":"毎日チェック（簡易20項目）";}
-function setQscMode(m){qscMode=m;render();}
+function setQscMode(m){qscMode=m;qscSortKey="overall";render();}
+function setQscSort(k){qscSortKey=k;render();}
+function toggleQscDir(){qscSortDir=qscSortDir==="desc"?"asc":"desc";render();}
+function qscLatestByStore(){const map={};QSC.filter(c=>qscKind(c)===qscMode).forEach(c=>{if(!map[c.store_id]||c.date>map[c.store_id].date)map[c.store_id]=c;});return map;}
+function storeCatScore(check,key){if(!check)return null;if(key==="overall")return check.score;const g=qscGroups()[Number(key)];if(!g)return check.score;let ok=0;g.items.forEach(it=>{if(check.results&&check.results[it.id]===true)ok++;});return Math.round(ok/g.items.length*100);}
 function qscToggle(){const seg=(m,label)=>`<button onclick="setQscMode('${m}')" style="flex:1;padding:10px 6px;border:none;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer;${qscMode===m?'background:var(--grad);color:#fff;box-shadow:0 3px 10px rgba(109,94,252,.3)':'background:#eef0fb;color:#5b6080'}">${label}</button>`;return `<div style="display:flex;gap:6px;margin-bottom:12px">${seg('daily','毎日チェック<br>簡易20項目')}${seg('monthly','月次臨店<br>200項目')}</div>`;}
 let SHIFTS=[], shiftForm=null, shiftMonth=null;
 let FOLDERS=[], FILES=[], fileCwd=null, fileSearch="", fileSel=new Set(), fmPending=[], fmUploader="", fmFolder="";
@@ -1294,11 +1298,43 @@ function backQsc(){qscViewStore=null;render();}
 function renderQSCHQ(){
   if(qscViewStore!=null)return renderQSCTrend(qscViewStore);
   let h=qscToggle();
-  h+=`<div class="card"><div class="ach-label">QSCダッシュボード｜各店の最新スコア（${esc(qscModeName(qscMode))}）</div>`;
-  STORES.forEach(s=>{const hist=QSC.filter(c=>c.store_id===s.id&&qscKind(c)===qscMode).sort((a,b)=>b.date.localeCompare(a.date));const latest=hist[0],sc=latest?latest.score:null;
-    h+=`<div class="store-row"><div class="sr-name">${esc(s.name)}</div><div class="sr-bar"><div class="bar"><i style="width:${sc||0}%"></i></div><div class="t-meta" style="margin-top:4px">${latest?("最新 "+latest.date.slice(5)):"未提出"}</div></div><div class="sr-pct">${sc==null?'—':sc+'%'}</div></div>`;});
-  h+=`</div><div class="sec-h"><span class="dot"></span>店舗ごとの推移を見る</div><div class="card">`;
-  STORES.forEach(s=>{h+=`<div class="task"><div class="t-body"><div class="t-name">${esc(s.name)}</div><div class="t-meta">${QSC.filter(c=>c.store_id===s.id&&qscKind(c)===qscMode).length}回のチェック</div></div><button class="t-edit" onclick="setQscView(${s.id})">推移 ›</button></div>`;});
+  const groups=qscGroups();
+  if(qscSortKey!=="overall"&&Number(qscSortKey)>=groups.length)qscSortKey="overall";
+  const latest=qscLatestByStore();
+  const submitted=STORES.filter(s=>latest[s.id]);
+  const items=qscAllItems();
+
+  /* グループ全体の平均スコア */
+  const grpAvg=submitted.length?Math.round(submitted.reduce((a,s)=>a+latest[s.id].score,0)/submitted.length):null;
+  h+=`<div class="card"><div class="ach-top"><span class="ach-label">グループ全体サマリー（${esc(qscModeName(qscMode))}）</span><span class="ach-count">提出 ${submitted.length}/${STORES.length}店</span></div>
+    <div class="ach-pct">${grpAvg==null?'—':grpAvg}<span>%</span></div><div class="bar"><i style="width:${grpAvg||0}%"></i></div>
+    <div class="t-meta" style="margin-top:6px">提出店舗の最新スコア平均</div></div>`;
+
+  /* 項目別ワースト3／ベスト3＋✕店舗 */
+  if(submitted.length){
+    const stats=items.map(it=>{let ok=0,xs=[];submitted.forEach(s=>{if(latest[s.id].results&&latest[s.id].results[it.id]===true)ok++;else xs.push(s.name);});return{t:it.t,pct:Math.round(ok/submitted.length*100),xs};});
+    const worst=stats.slice().sort((a,b)=>a.pct-b.pct||b.xs.length-a.xs.length).slice(0,3);
+    const best=stats.slice().sort((a,b)=>b.pct-a.pct||a.xs.length-b.xs.length).slice(0,3);
+    const block=(o,color,rank)=>`<div class="al-h" style="color:${color};margin-top:${rank===0?4:12}px">${rank+1}. ${o.pct}%　${esc(o.t)}</div>`+(o.xs.length?`<div class="t-meta" style="margin:3px 0 0">✕ ${o.xs.map(esc).join("・")}</div>`:`<div class="t-meta" style="margin:3px 0 0">✕なし（提出店すべて○）</div>`);
+    h+=`<div class="sec-h"><span class="dot"></span>要改善ワースト3（平均が低い項目）</div><div class="card">${worst.map((o,i)=>block(o,"#e0245e",i)).join("")}</div>`;
+    h+=`<div class="sec-h"><span class="dot"></span>好調ベスト3（平均が高い項目）</div><div class="card">${best.map((o,i)=>block(o,"#12b76a",i)).join("")}</div>`;
+  }
+
+  /* 並び替え＋各店の達成度 */
+  const sortOpts=[{k:"overall",label:"総合スコア"}].concat(groups.map((g,i)=>({k:String(i),label:g.cat})));
+  const scoreOf=s=>storeCatScore(latest[s.id],qscSortKey);
+  const withData=submitted.slice().sort((a,b)=>{const x=scoreOf(a),y=scoreOf(b);return qscSortDir==="desc"?y-x:x-y;});
+  const ordered=withData.concat(STORES.filter(s=>!latest[s.id]));
+  h+=`<div class="sec-h"><span class="dot"></span>各店の達成度（並び替え）</div><div class="card">`;
+  h+=`<div style="display:flex;gap:8px;margin-bottom:12px">
+    <select onchange="setQscSort(this.value)" style="flex:1;min-width:0;padding:9px;border-radius:9px;border:1px solid var(--line);font-size:12.5px;font-weight:700;background:#fff">${sortOpts.map(o=>`<option value="${o.k}" ${qscSortKey===o.k?"selected":""}>${esc(o.label)}</option>`).join("")}</select>
+    <button class="btn-line" style="width:auto;padding:9px 14px;margin:0;white-space:nowrap" onclick="toggleQscDir()">${qscSortDir==="desc"?"高い順 ↓":"低い順 ↑"}</button></div>`;
+  ordered.forEach(s=>{const c=latest[s.id],sc=scoreOf(s);
+    h+=`<div class="store-row"><div class="sr-name">${esc(s.name)}</div><div class="sr-bar"><div class="bar"><i style="width:${sc||0}%"></i></div><div class="t-meta" style="margin-top:4px">${c?("最新 "+c.date.slice(5)):"未提出"}</div></div><div class="sr-pct">${sc==null?'—':sc+'%'}</div></div>`;});
+  h+=`</div>`;
+
+  h+=`<div class="sec-h"><span class="dot"></span>店舗ごとの推移を見る</div><div class="card">`;
+  ordered.forEach(s=>{h+=`<div class="task"><div class="t-body"><div class="t-name">${esc(s.name)}</div><div class="t-meta">${QSC.filter(c=>c.store_id===s.id&&qscKind(c)===qscMode).length}回のチェック</div></div><button class="t-edit" onclick="setQscView(${s.id})">推移 ›</button></div>`;});
   h+=`</div>`;return h;
 }
 function renderQSCTrend(sid){
