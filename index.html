@@ -257,7 +257,7 @@ const NATIONAL_TOPICS=[
   {t:"テイクアウト・デリバリー",d:"中食需要は定着。丼・いなり・天ぷら弁当など持ち帰り商品や、雨の日のデリバリーで機会ロスを補う。配達手数料(約30%)を見込んだ価格設計を。"},
   {t:"上場外食大手の打ち手",d:"大手は価格改定＋価値訴求、モバイルオーダー/セルフレジ、クーポンアプリ・サブスク、期間限定・トッピング訴求を推進。取り入れられる打ち手は模倣する。"}
 ];
-let QSC=[], qscState={}, qscViewStore=null, qscMode="daily", qscSortKey="overall", qscSortDir="desc";
+let QSC=[], qscState={}, qscViewStore=null, qscMode="daily", qscSortKey="overall", qscSortDir="desc", qscTrendMetric="overall";
 const QSC_ITEMS=[
  {cat:"表｜店頭・駐車場",items:[
    {id:"n1",t:"店舗の看板、照明などに異常はないか"},
@@ -500,7 +500,7 @@ function qscGroups(){return qscMode==="monthly"?QSC_ITEMS:QSC_DAILY;}
 function qscAllItems(){return qscGroups().reduce((a,g)=>a.concat(g.items),[]);}
 function qscKind(c){if(c.results&&c.results.__kind)return c.results.__kind;return (c.results&&Object.keys(c.results).length>60)?"monthly":"daily";}
 function qscModeName(m){return m==="monthly"?"月次臨店（200項目）":"毎日チェック（簡易20項目）";}
-function setQscMode(m){qscMode=m;qscSortKey="overall";render();}
+function setQscMode(m){qscMode=m;qscSortKey="overall";qscTrendMetric="overall";render();}
 function setQscSort(k){qscSortKey=k;render();}
 function toggleQscDir(){qscSortDir=qscSortDir==="desc"?"asc":"desc";render();}
 function qscLatestByStore(){const map={};QSC.filter(c=>qscKind(c)===qscMode).forEach(c=>{if(!map[c.store_id]||c.date>map[c.store_id].date)map[c.store_id]=c;});return map;}
@@ -1094,13 +1094,19 @@ function renderReportManager(sid){
     h+=`<div style="margin:8px 0"><span class="pill ${REP_CLASS[cur.status]}">${REP_LABEL[cur.status]}</span></div>`;
     if(cur.status==="rejected"&&cur.reject_comment)h+=`<div class="scope-note" style="color:var(--red);border-color:var(--red-bg)">本部より差し戻し：${esc(cur.reject_comment)}</div>`;
     h+=`</div>`;
-    if(cur.status==="draft"||cur.status==="rejected")h+=`<button class="btn-grad" onclick="openReportForm('${cur.id}',${sid})">レポートを入力・編集する</button>`;
+    if(cur.status==="draft"||cur.status==="rejected"){h+=`<button class="btn-grad" onclick="openReportForm('${cur.id}',${sid})">レポートを入力・編集する</button>`;
+      h+=`<button class="btn-line" style="margin-top:8px;border-color:var(--red-bg);color:var(--red)" onclick="deleteReport('${cur.id}',${sid})">🗑 このレポートを削除する</button>`;}
     else if(cur.status==="submitted")h+=`<button class="btn-line" onclick="viewReport('${cur.id}',${sid})">提出した内容を表示</button>`;
     else if(cur.status==="approved")h+=`<button class="btn-grad" onclick="viewReport('${cur.id}',${sid})">承認済みレポートを表示・PDF</button>`;
   }
   const past=forms.filter(f=>f.month!==mk).sort((a,b)=>b.month.localeCompare(a.month));
   h+=`<div class="sec-h"><span class="dot"></span>これまでのレポート</div><div class="card">`;
-  h+= past.length? past.map(f=>`<div class="task"><div class="t-body"><div class="t-name">${monthLabelOf(f.month)}のレポート</div><div class="t-meta"><span class="pill ${REP_CLASS[f.status]}">${REP_LABEL[f.status]}</span></div></div><button class="t-edit" onclick="viewReport('${f.id}',${sid})">表示</button></div>`).join("") : `<div class="empty">まだありません</div>`;
+  h+= past.length? past.map(f=>{
+    let btns=(f.status==="draft"||f.status==="rejected")
+      ? `<div style="display:flex;flex-direction:column;gap:6px"><button class="t-edit" onclick="openReportForm('${f.id}',${sid})">修正</button><button class="t-edit" style="color:var(--red)" onclick="deleteReport('${f.id}',${sid})">削除</button></div>`
+      : `<button class="t-edit" onclick="viewReport('${f.id}',${sid})">表示</button>`;
+    return `<div class="task"><div class="t-body"><div class="t-name">${monthLabelOf(f.month)}のレポート</div><div class="t-meta"><span class="pill ${REP_CLASS[f.status]}">${REP_LABEL[f.status]}</span></div></div>${btns}</div>`;
+  }).join("") : `<div class="empty">まだありません</div>`;
   h+=`</div>`;return h;
 }
 async function createReport(sid){
@@ -1109,6 +1115,17 @@ async function createReport(sid){
   await loadData();openReportForm(data.id,sid);
 }
 function openReportForm(id,sid){repEditId=id;repEditStoreId=sid;renderReportForm();$("modal").classList.add("on");}
+function deleteReport(id,sid){
+  const f=getReport(id);if(!f)return;
+  if(f.status!=="draft"&&f.status!=="rejected"){uiToast("提出済み・承認済みのレポートは削除できません");return;}
+  uiConfirm("レポートを削除",monthLabelOf(f.month)+"のレポートを削除します。\nこの操作は元に戻せません。","削除する",async function(){
+    const {data,error}=await sb.from("reports").delete().eq("id",id).select();
+    if(error){uiToast("削除に失敗しました："+error.message);return;}
+    if(!data||!data.length){uiToast("削除できませんでした（権限設定が必要かもしれません）");return;}
+    if(repViewId===id)repViewId=null;if(repEditId===id)repEditId=null;
+    await loadData();render();uiToast("レポートを削除しました");
+  });
+}
 function renderReportForm(){
   const f=getReport(repEditId),bud=getBudget(repEditStoreId);
   let h=`<h2>${monthLabelOf(f.month)}の月次レポート（${esc(storeName(repEditStoreId))}）</h2><p class="hint">当月実績を入れると、予算比・前年比が自動で計算されます。</p>`;
@@ -1267,6 +1284,48 @@ function lineChart(data){
   data.forEach((d,i)=>{g+=`<text x="${x(i).toFixed(1)}" y="${H-6}" font-size="8.5" fill="#8b90b5" text-anchor="middle">${(d.label||"").slice(5).replace("-","/")}</text>`;});
   g+=`</svg>`;return g;
 }
+/* 複数系列の折れ線（日付でX軸を揃える） */
+function lineChartMulti(series,dates){
+  if(!dates.length)return `<div class="empty">まだデータがありません</div>`;
+  const W=320,H=160,L=28,R=10,T=12,B=28,n=dates.length;
+  const x=i=> n>1 ? L+i*(W-L-R)/(n-1) : (L+(W-R))/2;
+  const y=v=> T+(100-v)/100*(H-T-B);
+  const idx={};dates.forEach((d,i)=>idx[d]=i);
+  let g=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">`;
+  [0,50,100].forEach(v=>{g+=`<line x1="${L}" y1="${y(v).toFixed(1)}" x2="${W-R}" y2="${y(v).toFixed(1)}" stroke="#eef0fb"/><text x="2" y="${(y(v)+3).toFixed(1)}" font-size="9" fill="#8b90b5">${v}</text>`;});
+  series.forEach(s=>{const pts=(s.points||[]).filter(p=>idx[p.label]!=null);if(!pts.length)return;
+    if(pts.length>1)g+=`<polyline points="${pts.map(p=>x(idx[p.label]).toFixed(1)+","+y(p.value).toFixed(1)).join(" ")}" fill="none" stroke="${s.color}" stroke-width="2.4" stroke-linejoin="round"/>`;
+    pts.forEach(p=>{g+=`<circle cx="${x(idx[p.label]).toFixed(1)}" cy="${y(p.value).toFixed(1)}" r="2.9" fill="${s.color}"/>`;});});
+  const step=Math.max(1,Math.ceil(n/6));
+  dates.forEach((d,i)=>{if(i%step===0||i===n-1)g+=`<text x="${x(i).toFixed(1)}" y="${H-8}" font-size="8.5" fill="#8b90b5" text-anchor="middle">${d.slice(5).replace("-","/")}</text>`;});
+  g+=`</svg>`;
+  g+=`<div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:8px">`+series.map(s=>`<span style="font-size:11.5px;color:var(--muted);display:inline-flex;align-items:center;gap:5px"><span style="width:14px;height:3px;background:${s.color};border-radius:2px;display:inline-block"></span>${esc(s.name)}</span>`).join("")+`</div>`;
+  return g;
+}
+/* 推移の元データ（総合／カテゴリ別・自店／全体平均／グループ最高） */
+function qscChecksOf(sid){return QSC.filter(c=>c.store_id===sid&&qscKind(c)===qscMode).sort((a,b)=>a.date.localeCompare(b.date));}
+function qscOnOrBefore(checks,date){let r=null;for(const c of checks){if(c.date<=date)r=c;else break;}return r;}
+function qscTrendSeries(sid,key){
+  const dates=[...new Set(QSC.filter(c=>qscKind(c)===qscMode).map(c=>c.date))].sort();
+  const byStore={};STORES.forEach(s=>byStore[s.id]=qscChecksOf(s.id));
+  const avgPts=[],maxPts=[];
+  dates.forEach(d=>{const vals=[];STORES.forEach(s=>{const c=qscOnOrBefore(byStore[s.id],d);if(c)vals.push(storeCatScore(c,key));});
+    if(vals.length){avgPts.push({label:d,value:Math.round(vals.reduce((a,b)=>a+b,0)/vals.length)});maxPts.push({label:d,value:Math.max(...vals)});}});
+  const storePts=sid!=null?qscChecksOf(sid).map(c=>({label:c.date,value:storeCatScore(c,key)})):[];
+  return {dates,avgPts,maxPts,storePts};
+}
+function setQscTrendMetric(k){qscTrendMetric=k;render();}
+function qscMetricToggle(){
+  const groups=qscGroups();
+  if(qscTrendMetric!=="overall"&&Number(qscTrendMetric)>=groups.length)qscTrendMetric="overall";
+  if(qscMode==="daily"){
+    const opts=[{k:"overall",l:"総合"}].concat(groups.map((g,i)=>({k:String(i),l:g.cat.replace(/（.*$/,"")})));
+    const seg=o=>`<button onclick="setQscTrendMetric('${o.k}')" style="flex:1;padding:8px 4px;border:none;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;${qscTrendMetric===o.k?'background:var(--grad);color:#fff':'background:#eef0fb;color:#5b6080'}">${esc(o.l)}</button>`;
+    return `<div style="display:flex;gap:5px;margin-bottom:10px">${opts.map(seg).join("")}</div>`;
+  }
+  const opts=[{k:"overall",l:"総合スコア"}].concat(groups.map((g,i)=>({k:String(i),l:g.cat})));
+  return `<div style="margin-bottom:10px"><select onchange="setQscTrendMetric(this.value)" style="width:100%;padding:9px;border-radius:9px;border:1px solid var(--line);font-size:12.5px;font-weight:700;background:#fff">${opts.map(o=>`<option value="${o.k}" ${qscTrendMetric===o.k?"selected":""}>${esc(o.l)}</option>`).join("")}</select></div>`;
+}
 function setQSC(id,val){ qscState[id]=(qscState[id]===val)?undefined:val; render(); }
 function renderQSCStore(sid){
   const items=qscAllItems(),oCount=items.filter(it=>qscState[it.id]===true).length,score=Math.round(oCount/items.length*100);
@@ -1278,8 +1337,11 @@ function renderQSCStore(sid){
     h+=`</div>`;});
   h+=`<button class="btn-grad" onclick="submitQSC(${sid})">本部へ送信する</button>`;
   const hist=QSC.filter(c=>c.store_id===sid&&qscKind(c)===qscMode).sort((a,b)=>a.date.localeCompare(b.date));
-  h+=`<div class="sec-h"><span class="dot"></span>これまでの推移</div><div class="card">${lineChart(hist.map(c=>({label:c.date,value:c.score})))}`;
-  if(hist.length)h+=`<div style="margin-top:8px">`+hist.slice().reverse().map(c=>`<div class="t-meta">・${c.date.slice(5)}　<b>${c.score}%</b></div>`).join("")+`</div>`;
+  const tr=qscTrendSeries(sid,qscTrendMetric);
+  h+=`<div class="sec-h"><span class="dot"></span>これまでの推移（自店・全体平均・グループ最高）</div><div class="card">`;
+  h+=qscMetricToggle();
+  h+=lineChartMulti([{name:"自店",color:"#6d5efc",points:tr.storePts},{name:"全体平均",color:"#f59e0b",points:tr.avgPts},{name:"グループ最高",color:"#10b981",points:tr.maxPts}],tr.dates);
+  if(hist.length)h+=`<div style="margin-top:10px">`+hist.slice().reverse().map(c=>`<div class="t-meta">・${c.date.slice(5)}　<b>${storeCatScore(c,qscTrendMetric)}%</b></div>`).join("")+`</div>`;
   h+=`</div>`;return h;
 }
 function submitQSC(sid){
@@ -1309,6 +1371,13 @@ function renderQSCHQ(){
   h+=`<div class="card"><div class="ach-top"><span class="ach-label">グループ全体サマリー（${esc(qscModeName(qscMode))}）</span><span class="ach-count">提出 ${submitted.length}/${STORES.length}店</span></div>
     <div class="ach-pct">${grpAvg==null?'—':grpAvg}<span>%</span></div><div class="bar"><i style="width:${grpAvg||0}%"></i></div>
     <div class="t-meta" style="margin-top:6px">提出店舗の最新スコア平均</div></div>`;
+
+  /* 全体の平均スコア推移（＋グループ最高） */
+  const trHQ=qscTrendSeries(null,qscTrendMetric);
+  h+=`<div class="sec-h"><span class="dot"></span>全体の平均スコア推移</div><div class="card">`;
+  h+=qscMetricToggle();
+  h+=lineChartMulti([{name:"全体平均",color:"#f59e0b",points:trHQ.avgPts},{name:"グループ最高",color:"#10b981",points:trHQ.maxPts}],trHQ.dates);
+  h+=`</div>`;
 
   /* 項目別ワースト3／ベスト3＋✕店舗 */
   if(submitted.length){
@@ -1342,7 +1411,11 @@ function renderQSCTrend(sid){
   const latest=hist.length?hist[hist.length-1].score:null;
   let h=`<button class="btn-line" style="margin:0 0 12px" onclick="backQsc()">← 戻る</button>`;
   h+=qscToggle();
-  h+=`<div class="card"><div class="ach-top"><span class="ach-label">${esc(storeName(sid))}のQSC推移（${esc(qscModeName(qscMode))}）</span>${latest!=null?`<span class="ach-count">最新 ${latest}%</span>`:""}</div>${lineChart(hist.map(c=>({label:c.date,value:c.score})))}</div>`;
+  const tr=qscTrendSeries(sid,qscTrendMetric);
+  h+=`<div class="card"><div class="ach-top"><span class="ach-label">${esc(storeName(sid))}のQSC推移（${esc(qscModeName(qscMode))}）</span>${latest!=null?`<span class="ach-count">最新 ${latest}%</span>`:""}</div>`;
+  h+=qscMetricToggle();
+  h+=lineChartMulti([{name:"自店",color:"#6d5efc",points:tr.storePts},{name:"全体平均",color:"#f59e0b",points:tr.avgPts},{name:"グループ最高",color:"#10b981",points:tr.maxPts}],tr.dates);
+  h+=`</div>`;
   h+=`<div class="sec-h"><span class="dot"></span>履歴（${hist.length}回）</div><div class="card">`;
   h+= hist.length? hist.slice().reverse().map(c=>`<div class="task"><div class="t-body"><div class="t-name">${c.date}</div></div><div class="sr-pct">${c.score}%</div></div>`).join("") : `<div class="empty">まだありません</div>`;
   h+=`</div>`;return h;
