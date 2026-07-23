@@ -128,6 +128,8 @@
   .alarm-list{max-height:46vh;overflow-y:auto;margin-bottom:16px;}
   .al-h{font-weight:800;font-size:13.5px;margin:10px 0 6px;}
   .al-item{font-size:14px;padding:7px 9px;border-radius:8px;background:#f5f6ff;margin-bottom:5px;font-weight:600;}
+  .ui-toast{position:fixed;left:50%;bottom:86px;transform:translateX(-50%) translateY(12px);background:#22243a;color:#fff;padding:12px 18px;border-radius:12px;font-size:13.5px;font-weight:700;max-width:88%;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.3);opacity:0;transition:all .28s ease;z-index:10000;pointer-events:none;}
+  .ui-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
   .ox{display:flex;gap:6px;flex:0 0 auto;}
   .ox button{width:40px;height:36px;border:1.5px solid var(--line);border-radius:9px;background:#fafaff;font-size:17px;font-weight:800;color:#aab;}
   .ox button.o.on{background:var(--green-bg);border-color:var(--green);color:var(--green);}
@@ -594,6 +596,22 @@ function showAlarm(items,ackKey){
 }
 function ackAlarm(k){try{localStorage.setItem(k,"1");}catch(e){}const o=document.getElementById("alarmOverlay");if(o)o.remove();}
 function ackAlarmGo(k){ackAlarm(k);go('task');}
+
+/* ===== アプリ内ダイアログ（標準confirm/alertはPWAで不安定なため自前で用意） ===== */
+function uiToast(msg){try{const t=document.createElement("div");t.className="ui-toast";t.textContent=msg;document.body.appendChild(t);requestAnimationFrame(()=>t.classList.add("show"));setTimeout(()=>{t.classList.remove("show");setTimeout(()=>t.remove(),320);},2800);}catch(e){try{alert(msg);}catch(_){}}}
+function uiConfirm(title,msg,okLabel,onOk){
+  const old=document.getElementById("cfOverlay");if(old)old.remove();
+  const ov=document.createElement("div");ov.className="alarm-ov";ov.id="cfOverlay";
+  ov.innerHTML=`<div class="alarm-card">
+    <div class="alarm-ttl" style="font-size:18px">${esc(title)}</div>
+    <div class="alarm-sub" style="white-space:pre-line">${esc(msg)}</div>
+    <button class="btn-grad" id="cfOk">${esc(okLabel)}</button>
+    <button class="btn-line" style="margin-top:8px" id="cfNo">やめる</button>
+  </div>`;
+  document.body.appendChild(ov);
+  document.getElementById("cfOk").onclick=()=>{ov.remove();onOk();};
+  document.getElementById("cfNo").onclick=()=>ov.remove();
+}
 
 /* ===== 認証・起動 ===== */
 async function boot(){
@@ -1260,14 +1278,16 @@ function renderQSCStore(sid){
   if(hist.length)h+=`<div style="margin-top:8px">`+hist.slice().reverse().map(c=>`<div class="t-meta">・${c.date.slice(5)}　<b>${c.score}%</b></div>`).join("")+`</div>`;
   h+=`</div>`;return h;
 }
-async function submitQSC(sid){
+function submitQSC(sid){
   const items=qscAllItems(),un=items.filter(it=>qscState[it.id]===undefined).length;
-  if(un>0){if(!confirm(un+"件が未チェックです。未チェックは✕として送信します。よろしいですか？"))return;}
-  const results={__kind:qscMode};items.forEach(it=>results[it.id]=qscState[it.id]===true);
-  const score=Math.round(items.filter(it=>qscState[it.id]===true).length/items.length*100);
-  const {error}=await sb.from("qsc_checks").insert([{store_id:sid,date:todayStr(),results,score}]);
-  if(error){alert("送信に失敗："+error.message);return;}
-  qscState={};await loadData();render();alert("本部へ送信しました（"+qscModeName(qscMode)+"）。今回のスコア："+score+"%");
+  const msg=un>0?(un+"件が未チェックです。\n未チェックは✕として送信します。"):"この内容で本部へ送信します。";
+  uiConfirm("本部へ送信",msg,"送信する",async function(){
+    const results={__kind:qscMode};items.forEach(it=>results[it.id]=qscState[it.id]===true);
+    const score=Math.round(items.filter(it=>qscState[it.id]===true).length/items.length*100);
+    const {error}=await sb.from("qsc_checks").insert([{store_id:sid,date:todayStr(),results,score}]);
+    if(error){uiToast("送信に失敗しました："+error.message);return;}
+    qscState={};await loadData();render();uiToast("本部へ送信しました（"+qscModeName(qscMode)+"）｜スコア "+score+"%");
+  });
 }
 function setQscView(sid){qscViewStore=sid;render();}
 function backQsc(){qscViewStore=null;render();}
