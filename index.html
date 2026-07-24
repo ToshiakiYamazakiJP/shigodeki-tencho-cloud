@@ -801,8 +801,22 @@ function renderTaskHQ(){
   h+=`<div class="grp-title">▪ 全店共通のタスク（${common.length}件）</div>`;
   h+= common.length? common.map(t=>hqTaskRow(t,"全店共通","scope-all")).join("") : `<div class="empty">まだありません</div>`;
   STORES.forEach(s=>{const sg=TASKS.filter(t=>t.scope==="single"&&t.store_id===s.id);if(sg.length){h+=`<div class="grp-title">▪ ${esc(s.name)} だけのタスク（${sg.length}件）</div>`+sg.map(t=>hqTaskRow(t,s.name,"scope-single")).join("");}});
-  h+=`</div><button class="btn-grad" onclick="openTaskForm()">＋ タスクを配る</button>`;
+  h+=`</div>`;
+  h+=`<button class="btn-line" onclick="syncAllTasks()">🔄 全店共通タスクを全店舗に配り直す（店舗を追加したとき）</button>`;
+  h+=`<button class="btn-grad" onclick="openTaskForm()">＋ タスクを配る</button>`;
   return h;
+}
+async function syncAllTasks(){
+  const groups={};TASKS.filter(t=>t.scope==="all").forEach(t=>{(groups[t.group_id]=groups[t.group_id]||[]).push(t);});
+  const allIds=STORES.map(s=>s.id),toInsert=[];
+  Object.values(groups).forEach(rows=>{const present=new Set(rows.map(r=>r.store_id)),t=rows[0];
+    allIds.filter(sid=>!present.has(sid)).forEach(sid=>toInsert.push({store_id:sid,group_id:t.group_id,scope:"all",category:t.category,name:t.name,freq:t.freq,weekday:t.weekday,day:t.day,nth:t.nth,nth_weekday:t.nth_weekday,once_date:t.once_date,completions:[]}));});
+  if(!toInsert.length){uiToast("すべての全店タスクは全店舗に配布済みです");return;}
+  uiConfirm("全店タスクの配り直し",toInsert.length+"件の不足があります。\n全店舗に配布します。","配布する",async function(){
+    const {error}=await sb.from("tasks").insert(toInsert);
+    if(error){uiToast("配布に失敗しました："+error.message);return;}
+    await loadData();render();uiToast(toInsert.length+"件を全店舗に配布しました");
+  });
 }
 function hqTaskRow(t,badge,bc){
   return `<div class="task"><div class="t-body"><div class="t-name">${esc(t.name)}</div><div class="t-meta"><span class="pill">${esc(t.category||"")}</span><span class="pill">${freqText(t)}</span><span class="pill ${bc}">${badge}</span></div></div>
